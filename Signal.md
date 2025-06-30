@@ -138,6 +138,107 @@ Khi một tiến trình nhận được tín hiệu, nó có thể phản ứng 
 * **Biết cách `kill` và `killall`** để kiểm soát các daemon và dịch vụ trên thiết bị nhúng của bạn.
 * **Nắm vững cách tín hiệu tương tác với Threads** để tránh các lỗi khó lường và xây dựng ứng dụng đa luồng bền vững.
 
-Hiểu về Signals là một trong những cột mốc quan trọng để bạn thực sự làm chủ Linux programming, đặc biệt là khi bạn xây dựng các hệ thống nhúng có yêu cầu cao về độ tin cậy và khả năng quản lý lỗi.
 
-Bạn có muốn đi sâu vào một khía cạnh cụ thể nào trong phần tóm tắt này nữa không, hay chúng ta sẽ tiếp tục khám phá các chủ đề khác? 🤔
+---
+
+### **1. Khi nào dùng Signals (Tín hiệu)? 🔔**
+
+Hãy nhớ lại: **Signals là cơ chế thông báo không đồng bộ (asynchronous notification).** Mục đích chính của chúng không phải là truyền tải dữ liệu phức tạp, mà là để **báo hiệu một sự kiện đã xảy ra**.
+
+#### **Sử dụng Signals khi bạn cần: 🎯**
+
+1.  **Thông báo sự kiện đơn giản (Simple Event Notification):**
+    * **Ví dụ:** Một tiến trình con kết thúc (`SIGCHLD`), người dùng nhấn `Ctrl+C` (`SIGINT`), hoặc một daemon cần tải lại cấu hình (`SIGHUP`).
+    * **Ưu điểm:** Rất nhẹ, nhanh chóng, và được Kernel xử lý.
+
+2.  **Xử lý lỗi hoặc điều kiện bất thường (Error Handling / Exceptional Conditions):**
+    * **Ví dụ:** Chương trình truy cập bộ nhớ bất hợp lệ (`SIGSEGV`), lỗi chia cho 0 (`SIGFPE`). Bạn bắt các tín hiệu này để ghi log, dọn dẹp tài nguyên, hoặc cố gắng phục hồi.
+    * **Ưu điểm:** Là cách duy nhất để phản ứng với các lỗi cấp Kernel hoặc phần cứng một cách trực tiếp.
+
+3.  **Điều khiển tiến trình (Process Control / Job Control):**
+    * **Ví dụ:** Dừng (`SIGSTOP`, `SIGTSTP`), tiếp tục (`SIGCONT`), hoặc yêu cầu kết thúc (`SIGTERM`, `SIGKILL`) một tiến trình từ bên ngoài.
+    * **Ưu điểm:** Cơ chế tiêu chuẩn để quản lý vòng đời của các tiến trình.
+
+4.  **Tín hiệu "báo thức" (Alarms / Timers):**
+    * **Ví dụ:** Sử dụng `alarm()` để nhận `SIGALRM` sau một khoảng thời gian nhất định, giúp thực hiện các tác vụ định kỳ hoặc giới hạn thời gian cho một hoạt động.
+    * **Ưu điểm:** Nhẹ nhàng, không cần luồng riêng để hẹn giờ.
+
+5.  **Giao tiếp đơn giản giữa các tiến trình (Simple IPC for Control Flow):**
+    * **Ví dụ:** Một tiến trình gửi `SIGUSR1` cho tiến trình khác để yêu cầu nó bắt đầu một tác vụ cụ thể hoặc báo cáo trạng thái.
+    * **Ưu điểm:** Đơn giản, không cần thiết lập phức tạp như các kênh IPC khác nếu chỉ là một thông báo "có/không" hoặc "làm điều này".
+
+#### **Hạn chế của Signals ❌:**
+
+* **Không truyền dữ liệu lớn:** Signals chỉ mang một số nguyên nhỏ (số hiệu tín hiệu) và không được thiết kế để truyền tải dữ liệu phức tạp hoặc lớn.
+* **Không đảm bảo thứ tự:** Nếu nhiều tín hiệu cùng loại được gửi nhanh chóng, chúng có thể bị gộp lại hoặc không đảm bảo thứ tự nhận.
+* **Phức tạp khi xử lý (Re-entrancy):** Signal handlers phải là re-entrant, điều này giới hạn các hàm bạn có thể gọi bên trong chúng.
+* **Không đáng tin cậy cho mọi trường hợp:** Một số tín hiệu có thể bị bỏ qua hoặc không thể bắt.
+
+---
+
+### **2. Khi nào dùng Giao tiếp Liên Tiến trình (IPC) khác? 🤝**
+
+**IPC (Inter-Process Communication)** là một tập hợp các cơ chế cho phép các tiến trình trao đổi thông tin và đồng bộ hóa hoạt động với nhau. Khi bạn cần **truyền tải dữ liệu** hoặc **phối hợp phức tạp** hơn, bạn nên dùng IPC.
+
+#### **Các cơ chế IPC phổ biến và trường hợp sử dụng: 📦**
+
+1.  **Pipes (Ống dẫn - `pipe()`, Named Pipes/FIFOs) 💧:**
+    * **Mục đích:** Giao tiếp một chiều giữa các tiến trình (unidirectional data stream). Named pipes có thể được sử dụng bởi các tiến trình không liên quan.
+    * **Khi dùng:** Truyền dữ liệu dạng luồng (stream) từ tiến trình này sang tiến trình khác. Ví dụ: output của lệnh này là input của lệnh khác (`ls | grep`).
+    * **Ưu điểm:** Đơn giản, dễ sử dụng cho luồng dữ liệu tuần tự.
+    * **Hạn chế:** Một chiều, không có cấu trúc, không có cơ chế đồng bộ hóa tích hợp.
+
+2.  **Message Queues (Hàng đợi tin nhắn - `msgget()`, `msgsnd()`, `msgrcv()`) 📧:**
+    * **Mục đích:** Trao đổi các "tin nhắn" có cấu trúc giữa các tiến trình. Các tin nhắn có thể có kiểu (type), cho phép người nhận chọn lọc tin nhắn.
+    * **Khi dùng:** Giao tiếp dựa trên tin nhắn, nơi các tiến trình gửi/nhận các gói dữ liệu có cấu trúc. Ví dụ: hệ thống điều khiển gửi lệnh đến các module khác.
+    * **Ưu điểm:** Có cấu trúc, có thể ưu tiên tin nhắn, có thể tồn tại độc lập với tiến trình gửi/nhận.
+    * **Hạn chế:** Có giới hạn về kích thước tin nhắn và số lượng tin nhắn trong hàng đợi.
+
+3.  **Shared Memory (Bộ nhớ chia sẻ - `shmget()`, `shmat()`) 🧠:**
+    * **Mục đích:** Cho phép nhiều tiến trình truy cập cùng một vùng bộ nhớ vật lý.
+    * **Khi dùng:** Truyền tải lượng lớn dữ liệu giữa các tiến trình với tốc độ cao, vì không cần sao chép dữ liệu. Ví dụ: truyền dữ liệu hình ảnh, âm thanh, hoặc trạng thái lớn.
+    * **Ưu điểm:** Rất nhanh (tốc độ bộ nhớ).
+    * **Hạn chế:** Cần cơ chế đồng bộ hóa riêng (ví dụ: semaphore, mutex) để tránh điều kiện tranh chấp khi nhiều tiến trình cùng truy cập bộ nhớ. Rất dễ gây lỗi nếu không đồng bộ hóa đúng cách.
+
+4.  **Sockets (Ổ cắm - `socket()`, `bind()`, `listen()`, `connect()`, `send()`, `recv()`) 🌐:**
+    * **Mục đích:** Giao tiếp qua mạng (Network Sockets) hoặc giữa các tiến trình trên cùng một máy (Unix Domain Sockets).
+    * **Khi dùng:** Giao tiếp giữa các ứng dụng phân tán, hoặc giữa client/server trên cùng một máy.
+    * **Ưu điểm:** Rất linh hoạt, hỗ trợ nhiều giao thức (TCP, UDP), có thể giao tiếp qua mạng.
+    * **Hạn chế:** Overhead cao hơn các IPC nội bộ khác nếu chỉ dùng trên cùng một máy.
+
+---
+
+### **3. Quyết định lựa chọn trong Embedded Systems 🤖**
+
+Trong môi trường nhúng, việc lựa chọn cơ chế IPC/Signal càng quan trọng vì tài nguyên (CPU, RAM) thường rất hạn chế và tính ổn định là ưu tiên hàng đầu.
+
+* **Signals:**
+    * **Ưu tiên dùng cho:** Xử lý lỗi cấp thấp (`SIGSEGV`), tắt máy duyên dáng (`SIGTERM`), thông báo sự kiện đơn giản (tín hiệu `SIGUSR1/2`).
+    * **Tránh dùng cho:** Trao đổi dữ liệu liên tục, phức tạp.
+    * **Lưu ý:** Luôn cẩn thận với re-entrancy trong signal handlers.
+
+* **Pipes/FIFOs:**
+    * **Ưu tiên dùng cho:** Luồng dữ liệu đơn giản, một chiều giữa các tiến trình có quan hệ cha-con hoặc các tiến trình không liên quan (với FIFO). Ví dụ: một tiến trình ghi log vào FIFO, một tiến trình khác đọc từ đó để xử lý.
+    * **Lưu ý:** Cần xử lý lỗi khi pipe bị đóng.
+
+* **Message Queues:**
+    * **Ưu tiên dùng cho:** Giao tiếp có cấu trúc, đáng tin cậy giữa các tiến trình, nơi cần phân biệt loại tin nhắn hoặc ưu tiên. Ví dụ: gửi các lệnh điều khiển, dữ liệu trạng thái nhỏ.
+    * **Lưu ý:** Có giới hạn kích thước, có thể bị đầy.
+
+* **Shared Memory:**
+    * **Ưu tiên dùng cho:** Truyền tải lượng lớn dữ liệu tốc độ cao (ví dụ: dữ liệu cảm biến thô, buffer hình ảnh) giữa các tiến trình.
+    * **Lưu ý:** **Bắt buộc phải dùng kèm các cơ chế đồng bộ hóa (mutex, semaphore)** để bảo vệ dữ liệu trong vùng nhớ chia sẻ. Nếu không, sẽ gây ra lỗi dữ liệu nghiêm trọng.
+
+* **Unix Domain Sockets:**
+    * **Ưu tiên dùng cho:** Giao tiếp client-server trên cùng một máy, nơi cần giao tiếp hai chiều, đáng tin cậy, hoặc mô hình mạng.
+    * **Lưu ý:** Có overhead cao hơn một chút so với shared memory hay message queues nhưng linh hoạt hơn.
+
+**Nguyên tắc chung:**
+
+* **Đơn giản nhất có thể:** Luôn chọn cơ chế IPC đơn giản nhất đáp ứng yêu cầu của bạn để giảm thiểu overhead và độ phức tạp.
+* **Phân biệt thông báo và dữ liệu:** Nếu chỉ là một thông báo "có/không", hãy nghĩ đến Signals. Nếu cần truyền dữ liệu, hãy nghĩ đến các IPC khác.
+* **Đồng bộ hóa:** Hầu hết các cơ chế IPC (đặc biệt là Shared Memory) đều cần các cơ chế đồng bộ hóa riêng để tránh điều kiện tranh chấp.
+
+Việc nắm vững các lựa chọn này sẽ giúp bạn thiết kế các kiến trúc phần mềm nhúng hiệu quả và mạnh mẽ hơn rất nhiều!
+
+Bạn có muốn đi sâu vào một ví dụ cụ thể về việc sử dụng một trong các cơ chế IPC này trong C/C++ không? 🤔
