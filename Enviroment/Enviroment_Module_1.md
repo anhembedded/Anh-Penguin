@@ -1,4 +1,3 @@
-
 ### **Giáo trình: The Linux Environment 🌍**
 
 Chào Hoàng Anh,
@@ -52,7 +51,7 @@ Hãy bắt đầu với Module đầu tiên!
 * **Lý thuyết:** Khi một chương trình C++ được chạy trên Linux, điểm bắt đầu của nó là hàm `main()`. Hàm này có thể nhận hai tham số đặc biệt để truy cập các đối số (arguments) được truyền từ dòng lệnh:
   **C++**
 
-  ```
+  ```cpp
   int main(int argc, char *argv[])
   ```
 
@@ -103,7 +102,7 @@ Hãy bắt đầu với Module đầu tiên!
 * **Lý thuyết:** `getopt()` là một hàm thư viện chuẩn POSIX được thiết kế để phân tích cú pháp các tùy chọn dòng lệnh ngắn (single-character options, ví dụ: `-a`, `-b`, `-c value`).
   **C++**
 
-  ```
+  ```cpp
   #include <unistd.h> // For getopt
   // Các biến toàn cục được sử dụng bởi getopt:
   extern char *optarg;  // Con trỏ tới giá trị của tùy chọn (nếu có)
