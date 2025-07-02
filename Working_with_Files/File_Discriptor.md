@@ -34,3 +34,29 @@ int fd2 = open("/dev/ttyS0", O_RDWR);      // FD cho thiết bị serial
 Cả hai đều là FD hợp lệ, và bạn có thể `read()`, `write()`, `close()` như nhau.
 
 ---
+
+
+### 👥 Mỗi tiến trình có file descriptor riêng
+
+- Nếu **hai chương trình cùng mở một file**, mỗi chương trình sẽ có **file descriptor riêng biệt**.
+- Chúng **không chia sẻ** file descriptor, nhưng nếu cùng ghi vào file, thì:
+  - **Dữ liệu không bị trộn lẫn (interleaved)**.
+  - Nhưng **có thể ghi đè lên nhau**, vì mỗi tiến trình **giữ offset riêng** (vị trí đang đọc/ghi trong file).
+
+### 🔒 Tránh xung đột bằng file locking
+
+- Để tránh việc hai tiến trình **ghi đè dữ liệu của nhau**, ta có thể dùng **file locking**.
+- File locking giúp **đồng bộ hóa truy cập**, đảm bảo chỉ một tiến trình ghi vào file tại một thời điểm.
+
+---
+
+## 🧠 Tóm tắt dễ hiểu
+
+| Thành phần    | Ý nghĩa                                                                      |
+| --------------- | ------------------------------------------------------------------------------ |
+| `open()`      | Mở file và trả về file descriptor                                          |
+| File descriptor | Số nguyên đại diện cho file đã mở                                      |
+| Offset          | Vị trí hiện tại trong file mà tiến trình đang đọc/ghi                |
+| File locking    | Cách để ngăn chặn xung đột khi nhiều tiến trình truy cập cùng file |
+
+---

@@ -1,0 +1,3 @@
+In the first execution, we create some input for the program using echo, which is piped to our program.
+In the second execution, we redirect input from a file. In this case, we see the first part of the file
+draft1.txt appearing on the standard output.
