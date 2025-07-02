@@ -21,7 +21,7 @@
   * **`getenv()`:** Hàm dùng để **lấy giá trị** của một biến môi trường.
     **C++**
 
-    ```
+    ```cpp
     #include <stdlib.h> // For getenv
     char *getenv(const char *name);
     ```
@@ -34,7 +34,7 @@
   * **`putenv()`:** Hàm dùng để **thiết lập hoặc thay đổi giá trị** của một biến môi trường trong môi trường của tiến trình hiện tại.
     **C++**
 
-    ```
+    ```cpp
     #include <stdlib.h> // For putenv
     int putenv(char *string);
     ```
