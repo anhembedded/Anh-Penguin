@@ -1,7 +1,4 @@
 
-
----
-
 ### **Module 4: Quản lý File và Thư mục 📁**
 
 Trong Module này, chúng ta sẽ học cách chương trình của bạn có thể tạo, xóa, thay đổi quyền hạn, chủ sở hữu, và điều hướng trong cấu trúc thư mục của Linux.
@@ -17,6 +14,7 @@ Trong Module này, chúng ta sẽ học cách chương trình của bạn có th
     #include <sys/stat.h> // For chmod, mode_t
     int chmod(const char *path, mode_t mode);
     ```
+
   * **`path`** : Đường dẫn đến file hoặc thư mục.
   * **`mode`** : Giá trị số nguyên (thường là số octal) biểu diễn các quyền hạn mới. Giá trị này được tạo ra bằng cách kết hợp (bitwise OR `|`) các cờ quyền hạn được định nghĩa trong `<sys/stat.h>`:
   * **Quyền của Owner (USR):**
@@ -106,6 +104,7 @@ Trong Module này, chúng ta sẽ học cách chương trình của bạn có th
     #include <sys/types.h> // For uid_t, gid_t
     int chown(const char *path, uid_t owner, gid_t group);
     ```
+
   * **`path`** : Đường dẫn đến file hoặc thư mục.
   * **`owner`** : User ID (UID) mới của chủ sở hữu. Nếu bạn không muốn thay đổi chủ sở hữu, dùng `(uid_t)-1`.
   * **`group`** : Group ID (GID) mới của nhóm. Nếu bạn không muốn thay đổi nhóm, dùng `(gid_t)-1`.
@@ -177,6 +176,7 @@ Trong Module này, chúng ta sẽ học cách chương trình của bạn có th
     #include <unistd.h> // For unlink
     int unlink(const char *path);
     ```
+
   * **`path`** : Đường dẫn đến file cần xóa.
   * **Cách hoạt động:**
 

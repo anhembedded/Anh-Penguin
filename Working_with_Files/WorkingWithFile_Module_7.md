@@ -1,6 +1,3 @@
-
----
-
 ### **Module 7: Các Chủ đề Nâng cao (`fcntl` & `mmap`) 🚀**
 
 #### **7.1. `fcntl()`: Điều khiển File Descriptor Nâng cao 🛠️**
@@ -10,7 +7,7 @@
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <fcntl.h> // For fcntl, F_DUPFD, FD_CLOEXEC, etc.
     int fcntl(int fildes, int cmd, ... /* arg */);
     ```
@@ -53,7 +50,7 @@
 * **Ví dụ (C++): Sử dụng `fcntl()` để đặt cờ `FD_CLOEXEC` và `O_NONBLOCK`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <fcntl.h>    // For fcntl, O_RDONLY, FD_CLOEXEC, O_NONBLOCK, F_GETFL, F_SETFL, F_GETFD, F_SETFD
@@ -253,7 +250,7 @@
 * **Ví dụ (C++): Sử dụng `mmap()` để cập nhật file cấu trúc**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <vector>

@@ -1,4 +1,3 @@
-
 ### **Module 5: Quét Thư mục (Directory Scanning) 📂🔍**
 
 Trong Module này, bạn sẽ học cách chương trình C/C++ của mình có thể "đọc" nội dung của một thư mục, liệt kê các file và thư mục con bên trong nó.
@@ -23,7 +22,7 @@ Bạn sẽ làm việc với cấu trúc `DIR *` (gọi là "directory stream") 
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <sys/types.h> // For DIR type
     #include <dirent.h>    // For opendir, DIR structure
     DIR *opendir(const char *name);
@@ -36,7 +35,7 @@ Bạn sẽ làm việc với cấu trúc `DIR *` (gọi là "directory stream") 
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <sys/types.h> // For struct dirent type
     #include <dirent.h>    // For readdir, struct dirent
     struct dirent *readdir(DIR *dirp);
@@ -56,7 +55,7 @@ Bạn sẽ làm việc với cấu trúc `DIR *` (gọi là "directory stream") 
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <sys/types.h>
     #include <dirent.h>
     int closedir(DIR *dirp);
@@ -90,7 +89,7 @@ Ví dụ này minh họa cách kết hợp các hàm `opendir()`, `readdir()`, `
 
 **C++**
 
-```
+```cpp
 #include <iostream>
 #include <string>
 #include <vector>

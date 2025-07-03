@@ -143,7 +143,7 @@
 * **Lý thuyết:** Ngoài `getenv()`, thư viện C trên các hệ thống POSIX còn cung cấp một biến toàn cục đặc biệt tên là  **`environ`** . Biến này là một con trỏ tới một mảng các con trỏ `char` (kiểu `char **`), trong đó mỗi con trỏ trỏ tới một chuỗi có định dạng `"NAME=VALUE"`. Mảng này được kết thúc bằng một con trỏ `NULL`.
   **C++**
 
-  ```
+  ```cpp
   #include <unistd.h> // Cần thiết cho extern char **environ; trên một số hệ thống
   extern char **environ;
   ```

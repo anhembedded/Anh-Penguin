@@ -1,7 +1,3 @@
-
-
----
-
 ### **Module 6: Xử lý Lỗi và Hệ thống File Ảo `/proc` 🐞🔍**
 
 #### **6.1. Xử lý Lỗi trong Lập trình File (Error Handling) ❌**
@@ -57,7 +53,7 @@ Khi làm việc với các System Calls hoặc hàm thư viện, lỗi là đi�
 * **Ví dụ (C++): Xử lý Lỗi với `errno`, `strerror()`, `perror()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <stdio.h>    // For perror
@@ -167,7 +163,7 @@ Khi làm việc với các System Calls hoặc hàm thư viện, lỗi là đi�
 * **Ví dụ (C++): Đọc thông tin từ `/proc`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <fstream>  // For std::ifstream (C++ stream for file I/O)
