@@ -140,7 +140,7 @@ service_manager_project/
 
 **CMake**
 
-```
+```cmake
 cmake_minimum_required(VERSION 3.17)
 project(ServiceManagerProject LANGUAGES CXX)
 
