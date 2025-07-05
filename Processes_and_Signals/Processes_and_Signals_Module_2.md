@@ -34,7 +34,7 @@
 * **Ví dụ (C++): `system_example.cpp` - Sử dụng `system()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib> // For system, EXIT_SUCCESS, EXIT_FAILURE
@@ -108,11 +108,13 @@
 * **Ví dụ (C++): `exec_example.cpp` - Sử dụng `execlp()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib> // For exit, EXIT_SUCCESS, EXIT_FAILURE
   #include <unistd.h> // For execlp, getpid
+  #include <map>
+  #include <cstring>
 
   // Logger namespace
   namespace AppLogger {
@@ -143,6 +145,7 @@
       AppLogger::log(AppLogger::ERROR_L, "execlp failed: " + std::string(strerror(errno)));
       return EXIT_FAILURE;
   }
+
   ```
 
   * **Cách chạy:**
@@ -161,7 +164,7 @@
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <unistd.h> // For fork, getpid, getppid
     // pid_t fork(void);
     ```
@@ -184,10 +187,64 @@
   * Khởi chạy các daemon hoặc dịch vụ nền.
   * Phân chia công việc thành các tiến trình độc lập.
   * Tạo ra các "wrapper" hoặc "launcher" cho các ứng dụng khác.
+
+  📌 **Hàm `wait()` trong C/C++ (trên hệ điều hành Unix/Linux)** dùng để:
+
+  * **Chặn tiến trình cha** cho đến khi  **một tiến trình con kết thúc** .
+  * **Thu thập mã thoát (exit status)** của tiến trình con để tránh tạo ra tiến trình zombie.
+
+  ---
+
+  ### 🧪 Cách dùng cơ bản:
+
+
+  ```cpp
+  #include <sys/wait.h>  // wait()
+  #include <unistd.h>    // fork()
+  #include <iostream>
+
+  int main() {
+      pid_t pid = fork();
+
+      if (pid == 0) {
+          // Tiến trình con
+          std::cout << "Child PID: " << getpid() << std::endl;
+          return 42; // Mã thoát
+      } else {
+          // Tiến trình cha
+          int status;
+          wait(&status); // Chờ con kết thúc
+
+          if (WIFEXITED(status)) {
+              std::cout << "Child exited with code: " << WEXITSTATUS(status) << std::endl;
+          }
+      }
+
+      return 0;
+  }
+  ```
+
+  ---
+
+  ### 🧠 Một số macro hữu ích:
+
+  | Macro              | Ý nghĩa                                                                                  |
+  | ------------------ | ------------------------------------------------------------------------------------------ |
+  | `WIFEXITED(s)`   | Trả về true nếu tiến trình con kết thúc bình thường (`exit()`hoặc `return`) |
+  | `WEXITSTATUS(s)` | Lấy mã thoát (exit code) nếu `WIFEXITED(s)`là true                                  |
+  | `WIFSIGNALED(s)` | Trả về true nếu tiến trình con bị kết thúc bởi tín hiệu (signal)                |
+  | `WTERMSIG(s)`    | Lấy số hiệu tín hiệu đã kết thúc tiến trình con                                 |
+
+  ---
+
+  ### 🧩 Ghi nhớ:
+
+  * Nếu có  **nhiều tiến trình con** , `wait()` sẽ chờ **bất kỳ** tiến trình nào kết thúc.
+  * Nếu muốn chờ  **một tiến trình cụ thể** , dùng `waitpid(pid, &status, 0);`.
 * **Ví dụ (C++): `fork_example.cpp` - Sử dụng `fork()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib>  // For exit, EXIT_SUCCESS, EXIT_FAILURE
@@ -277,7 +334,7 @@
 * **Ví dụ (C++): `redirect_output.cpp` - Chuyển hướng `stdout` của tiến trình con**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib>  // For exit, EXIT_SUCCESS, EXIT_FAILURE
@@ -410,7 +467,3 @@
        * Trong tiến trình cha, `wait()` cho tiến trình con.
        * Dọn dẹp file đã mở.
    * **Mục tiêu:** Khi chạy `./file_processor my_text.txt`, nó sẽ in ra nội dung của `my_text.txt` đã được chuyển đổi thành chữ hoa.
-
----
-
-Hãy dành thời gian để thực hành các bài tập này. Chúng sẽ giúp bạn làm chủ việc khởi tạo và quản lý các tiến trình trong Linux, một kỹ năng cốt lõi cho lập trình hệ thống. Khi bạn đã sẵn sàng, hãy cho tôi biết để chuyển sang  **Module 3: Quản lý Tiến trình Con** !

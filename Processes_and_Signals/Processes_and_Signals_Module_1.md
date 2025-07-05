@@ -75,7 +75,7 @@ Trong Linux, mọi hoạt động đều xoay quanh khái niệm  **tiến trìn
 * **Ví dụ (Shell): Sử dụng `ps` và `top`**
   **Bash**
 
-  ```
+  ```bash
   # Chạy lệnh này trên terminal của bạn
   echo "--- ps -ef output (abbreviated) ---"
   ps -ef | head -n 5 # Hiển thị 5 dòng đầu
@@ -84,6 +84,7 @@ Trong Linux, mọi hoạt động đều xoay quanh khái niệm  **tiến trìn
   echo "--- pstree output ---"
   pstree | head -n 10 # Hiển thị 10 dòng đầu của cây tiến trình
   echo "--- top (exit with 'q') ---"
+  ps -e -o pid,ppid,user,stat,start,time,cmd
   # top # Chạy top, nhấn 'q' để thoát.
   ```
 

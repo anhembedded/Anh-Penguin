@@ -12,7 +12,7 @@
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <sys/wait.h> // For wait, WIFEXITED, WEXITSTATUS, etc.
     #include <sys/types.h> // For pid_t (optional, often included by sys/wait.h)
     // pid_t wait(int *stat_loc);
@@ -39,7 +39,7 @@
 * **Ví dụ (C++): `wait_example.cpp` - Sử dụng `wait()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib>  // For exit, EXIT_SUCCESS, EXIT_FAILURE
@@ -122,7 +122,7 @@
 * **Ví dụ (C++): `zombie_example.cpp` - Tạo và Tránh Zombie**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <cstdlib>  // For exit, EXIT_SUCCESS, EXIT_FAILURE

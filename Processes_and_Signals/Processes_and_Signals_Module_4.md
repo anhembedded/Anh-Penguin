@@ -1,112 +1,261 @@
 # **Module 4: Signals (Tín hiệu) 🚦**
 
-#### **4.1. Signal là gì? (What is a Signal?) 🔔**
+---
 
-* **Lý thuyết:** Một **Signal (Tín hiệu)** là một **thông báo không đồng bộ (asynchronous notification)** được gửi đến một tiến trình để báo hiệu một sự kiện đã xảy ra.
-  * Hãy hình dung nó như một "cú điện thoại" bất ngờ mà hệ điều hành hoặc một tiến trình khác gọi cho tiến trình của bạn.
-  * Tín hiệu được **"gửi" (raise)** và được  **"nhận" (catch)** .
-* **Nguồn gốc của tín hiệu:**
-  * **Hệ điều hành/Kernel:** Do các lỗi nghiêm trọng (ví dụ: truy cập bộ nhớ bất hợp lệ - `SIGSEGV`, lỗi số học dấu phẩy động - `SIGFPE`, lệnh bất hợp pháp - `SIGILL`).
-  * **Shell/Terminal:** Do người dùng nhập các tổ hợp phím đặc biệt (ví dụ: `Ctrl+C` gửi `SIGINT`, `Ctrl+\` gửi `SIGQUIT`, `Ctrl+Z` gửi `SIGTSTP`).
-  * **Các tiến trình khác:** Một tiến trình có thể gửi tín hiệu đến một tiến trình khác (bao gồm cả chính nó) để yêu cầu nó thực hiện một hành động nào đó hoặc thông báo một sự kiện.
+### 🔔 **4.1. Signal là gì? (What is a Signal?)**
 
-#### **4.2. Các Loại Tín hiệu Phổ biến và Hành vi Mặc định 📋**
+#### 🧠 **Lý thuyết chung**
 
-Tất cả các tên tín hiệu bắt đầu bằng "SIG". Mỗi tín hiệu có một số hiệu duy nhất.
+Một **Signal (Tín hiệu)** là một dạng **thông báo không đồng bộ (asynchronous notification)** được gửi đến một tiến trình để báo hiệu rằng một sự kiện nào đó đã xảy ra.
 
-* **Tín hiệu gây kết thúc chương trình kèm Core Dump (lỗi nghiêm trọng) 💀:** Mặc định sẽ chấm dứt tiến trình và thường tạo ra `core dump` file (ảnh chụp bộ nhớ tiến trình để debug).
-  * `SIGABRT` (6): Hủy bỏ tiến trình (do hàm `abort()` gọi).
-  * `SIGFPE` (8): Lỗi số học dấu phẩy động (ví dụ: chia cho 0).
-  * `SIGILL` (4): Lệnh bất hợp pháp.
-  * `SIGQUIT` (3): Thoát từ terminal (Ctrl+).
-  * `SIGSEGV` (11): Lỗi phân đoạn (truy cập bộ nhớ bất hợp pháp).
-* **Tín hiệu yêu cầu kết thúc hoặc điều khiển (thường không tạo core dump) 🚪:**
-  * `SIGHUP` (1): Treo máy (Hangup). Thường gửi khi terminal ngắt kết nối; được dùng để yêu cầu các daemon tải lại cấu hình mà không khởi động lại.
-  * `SIGINT` (2): Ngắt từ terminal (Ctrl+C).
-  * `SIGPIPE` (13): Ghi vào pipe/socket không có bộ đọc.
-  * `SIGTERM` (15): Yêu cầu tiến trình kết thúc một cách duyên dáng. Đây là tín hiệu mặc định của lệnh `kill`.
-  * `SIGUSR1` (10), `SIGUSR2` (12): Hai tín hiệu do người dùng định nghĩa, để các tiến trình giao tiếp với nhau theo mục đích riêng.
-* **Tín hiệu dừng/tiếp tục tiến trình (Job Control) ⏸️▶️:**
-  * `SIGSTOP` (19): Dừng tiến trình ngay lập tức (không thể bắt hoặc bỏ qua).
-  * `SIGTSTP` (20): Dừng terminal (Ctrl+Z, có thể bắt).
-  * `SIGCONT` (18): Tiếp tục tiến trình đã dừng (bị bỏ qua nếu tiến trình không dừng).
-* **Tín hiệu quản lý tiến trình con 👶:**
-  * `SIGCHLD` (17): Được gửi đến tiến trình cha khi một tiến trình con dừng hoặc kết thúc. Mặc định bị bỏ qua nhưng rất quan trọng để quản lý và "dọn dẹp" các tiến trình zombie.
-* **Các tín hiệu không thể Bắt hoặc Bỏ qua 🔒:**
-  * `SIGKILL` (9): Buộc tiến trình kết thúc ngay lập tức.
-  * `SIGSTOP` (19): Buộc tiến trình dừng ngay lập tức.
-  * Hai tín hiệu này không thể bị chặn (blocked), bắt (caught), hay bỏ qua (ignored) bởi một tiến trình; chúng là "lệnh tuyệt đối" từ Kernel.
+* Hãy tưởng tượng nó như một "cuộc gọi bất ngờ" mà hệ điều hành hoặc một tiến trình khác thực hiện để **đánh thức** tiến trình của bạn.
+* Tín hiệu sẽ được:
+  * **Gửi (raise)** — phát sinh từ một tác nhân nào đó.
+  * **Nhận (catch)** — tiến trình xử lý thông qua signal handler hoặc theo hành vi mặc định.
 
-#### **4.3. Gửi Tín hiệu ✉️**
+---
 
-* **Từ Shell:**
-  * `kill PID`: Gửi `SIGTERM` (15) mặc định.
-  * `kill -s SIGNAL_NAME PID` (ví dụ: `kill -s HUP 1234`).
-  * `kill -SIGNAL_NUMBER PID` (ví dụ: `kill -9 1234`).
-  * `killall PROGRAM_NAME`: Gửi tín hiệu đến tất cả tiến trình có tên `PROGRAM_NAME`.
-* **Từ chương trình C/C++:**
-  * `int kill(pid_t pid, int sig);`: Gửi tín hiệu `sig` tới tiến trình `pid`. Cần quyền thích hợp (thường là cùng UID hoặc root).
-  * `int raise(int sig);`: Gửi tín hiệu `sig` tới chính tiến trình gọi.
-  * `unsigned int alarm(unsigned int seconds);`: Đặt bộ hẹn giờ để gửi `SIGALRM` tới chính tiến trình sau `seconds` giây.
+#### 📦 **Nguồn gốc phát sinh tín hiệu**
 
-#### **4.4. Xử lý Tín hiệu (Signal Handling) 🛡️**
+Tín hiệu có thể xuất hiện từ nhiều nguồn khác nhau:
 
-Một tiến trình có thể thay đổi hành vi mặc định khi nhận được một tín hiệu bằng cách cài đặt một **trình xử lý tín hiệu (signal handler)** – một hàm mà Kernel sẽ gọi khi tín hiệu đến.
+* 🧩 **Hệ điều hành/Kernel**
 
-* **Hàm `signal()` (Cũ và không khuyến nghị):**
-  * `void (*signal(int sig, void (*func)(int)))(int);`
-  * Là hàm truyền thống nhưng có hành vi không nhất quán và dễ gây ra điều kiện tranh chấp (race conditions). Trình xử lý thường tự động đặt lại về mặc định sau khi được gọi.
-  * **Khuyến nghị:** **Không nên sử dụng `signal()` trong các chương trình mới.**
-* **Hàm `sigaction()` (Hiện đại, Mạnh mẽ, và được Khuyến nghị) ✅:**
-  * `int sigaction(int sig, const struct sigaction *act, struct sigaction *oact);`
-  * Cung cấp kiểm soát chi tiết hơn thông qua cấu trúc `struct sigaction`.
-  * **`struct sigaction`** :
-  * `sa_handler`: Con trỏ tới hàm xử lý tín hiệu (hoặc `SIG_IGN` để bỏ qua, `SIG_DFL` để dùng hành vi mặc định).
-  * `sa_mask` (`sigset_t`): Một **tập hợp các tín hiệu** sẽ bị **chặn (blocked)** khi `sa_handler` đang chạy. Điều này ngăn chặn các tín hiệu khác làm gián đoạn trình xử lý.
-  * `sa_flags`: Các cờ để điều chỉnh hành vi:
-    * `SA_RESTART`: Tự động khởi động lại các System Call bị gián đoạn bởi tín hiệu.
-    * `SA_RESETHAND`: Đặt lại handler về mặc định sau khi được gọi một lần (giống `signal()`).
-    * `SA_SIGINFO`: (Rất quan trọng) Cho phép handler nhận thêm thông tin chi tiết về tín hiệu và ngữ cảnh (thay đổi chữ ký handler thành `void handler(int sig, siginfo_t *info, void *ucontext)`).
-    * `SA_NODEFER`: Không thêm tín hiệu hiện tại vào mask khi handler chạy (ít dùng, cẩn thận với re-entrancy).
-* **Quy tắc Vàng cho Signal Handler ⚠️:**
-  * Hàm xử lý tín hiệu **PHẢI re-entrant** (có thể bị gọi lại một cách an toàn khi nó chưa hoàn thành).
-  * Chỉ được phép gọi một tập hợp rất hạn chế các hàm an toàn (async-signal-safe functions) bên trong signal handler (ví dụ: `write` với một file descriptor cố định, `_exit`, `kill`). **Tuyệt đối không dùng `printf`, `malloc`, `free` trực tiếp trong handler.**
-  * **Thực hành tốt nhất:** Signal handler chỉ nên **thiết lập một cờ (flag) toàn cục** (kiểu `volatile sig_atomic_t`) và sau đó vòng lặp chính của chương trình sẽ kiểm tra cờ đó để thực hiện các tác vụ phức tạp hơn.
+  Do các lỗi nghiêm trọng trong quá trình thực thi:
 
-#### **4.5. Tập hợp Tín hiệu (Signal Sets) & Mặt nạ Tiến trình 🎭**
+  * Truy cập bộ nhớ sai (segmentation fault) → `SIGSEGV`
+  * Lỗi toán học dấu phẩy động (float exception) → `SIGFPE`
+  * Thi hành lệnh máy không hợp lệ → `SIGILL`
+* ⌨️ **Shell/Terminal**
 
-* **`sigset_t`** : Một kiểu dữ liệu để biểu diễn một tập hợp các tín hiệu.
-* **Các hàm tiện ích (`<signal.h>`):**
-  * `sigemptyset(&set)`: Khởi tạo `set` thành tập hợp rỗng.
-  * `sigfillset(&set)`: Khởi tạo `set` chứa tất cả các tín hiệu.
-  * `sigaddset(&set, signo)`: Thêm `signo` vào `set`.
-  * `sigdelset(&set, signo)`: Xóa `signo` khỏi `set`.
-  * `sigismember(&set, signo)`: Kiểm tra `signo` có trong `set` không.
-* **`sigprocmask()`:**
-  * `int sigprocmask(int how, const sigset_t *set, sigset_t *oset);`
-  * Được dùng để  **thay đổi mặt nạ tín hiệu của tiến trình** . Mặt nạ này xác định những tín hiệu nào mà tiến trình hiện đang  **chặn (blocked)** . Tín hiệu bị chặn sẽ không được gửi ngay lập tức mà sẽ bị **treo (pending)** cho đến khi nó được bỏ chặn.
-  * `how`: `SIG_BLOCK` (thêm vào mask), `SIG_UNBLOCK` (xóa khỏi mask), `SIG_SETMASK` (đặt mask mới).
-* **`sigpending()`:**
-  * `int sigpending(sigset_t *set);`
-  * Kiểm tra các tín hiệu hiện đang bị chặn và đang chờ được gửi đến tiến trình.
-* **`sigsuspend()`:**
-  * `int sigsuspend(const sigset_t *sigmask);`
-  * Tạm dừng tiến trình, thay thế mặt nạ tín hiệu hiện tại bằng `sigmask` được cung cấp. Tiến trình sẽ tiếp tục khi một tín hiệu không bị chặn được gửi đến và được xử lý. Đây là cách an toàn và mạnh mẽ hơn để chờ tín hiệu so với `pause()`.
+  Người dùng nhập các phím đặc biệt khi chạy chương trình:
 
-#### **4.6. Signals và POSIX Threads 🤝**
+  * `Ctrl+C` → gửi `SIGINT` (ngắt chương trình)
+  * `Ctrl+\` → gửi `SIGQUIT` (thoát kèm core dump)
+  * `Ctrl+Z` → gửi `SIGTSTP` (dừng tạm thời tiến trình)
+* 🔁 **Tiến trình khác (Process-to-Process)**
 
-* **Signals là của Tiến trình, nhưng được Phân phối cho một Luồng cụ thể.**
-* **Mặt nạ tín hiệu (Signal Mask) là CỦA TỪNG LUỒNG.** Mỗi luồng có thể chặn các tín hiệu khác nhau bằng `pthread_sigmask()`.
-* **Trình xử lý tín hiệu (Signal Handler) là CỦA TOÀN BỘ TIẾN TRÌNH.** Tất cả các luồng trong một tiến trình chia sẻ cùng một bảng trình xử lý tín hiệu.
-* **Quy tắc phân phối tín hiệu:**
+  Một tiến trình có thể gửi tín hiệu đến:
 
-  * **Tín hiệu đồng bộ (`SIGSEGV`, `SIGFPE`):** Luôn được gửi đến  **luồng đã gây ra lỗi** .
-  * **Tín hiệu không đồng bộ (`SIGINT`, `SIGTERM`):** Kernel sẽ gửi đến **một luồng bất kỳ** trong tiến trình đó mà **không chặn** tín hiệu đó. Nếu tất cả các luồng đều chặn, tín hiệu sẽ bị treo.
-  * **`SIGKILL` và `SIGSTOP`:** Luôn ảnh hưởng đến  **toàn bộ tiến trình** , không thể bị chặn hoặc bắt bởi bất kỳ luồng nào.
+  * **Tiến trình khác** , ví dụ: daemon giám sát gửi `SIGTERM` để yêu cầu thoát.
+  * **Chính nó** , ví dụ: gọi `raise(SIGUSR1)` để tự xử lý nội bộ.
+
+---
+
+## 💀 **1. Tín hiệu gây Core Dump — Lỗi nghiêm trọng**
+
+| Tín hiệu      | Mô tả                                              | Nguyên nhân thường gặp                         | Handler được không?                                        |
+| --------------- | ---------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `SIGABRT`(6)  | Tự hủy tiến trình bằng `abort()`              | Vi phạm logic, assert fail                         | ✅ Có thể bắt bằng `sigaction()`                         |
+| `SIGFPE`(8)   | Lỗi số học: chia cho 0, tràn số, chia sai kiểu | `int x = 1 / 0;`, float-to-int overflow           | ✅ Có thể bắt                                               |
+| `SIGILL`(4)   | Lệnh bất hợp pháp                                | Gọi hàm không hợp lệ, corruption bộ nhớ mã  | ✅ Có thể bắt                                               |
+| `SIGQUIT`(3)  | Ctrl + \ từ terminal → kết thúc có core dump    | Thoát tự nguyện có debug, thường không dùng | ✅ Có thể bắt                                               |
+| `SIGSEGV`(11) | Lỗi phân đoạn: truy cập sai vùng bộ nhớ      | Dereference null pointer, buffer overflow           | ✅ Có thể bắt (thường để ghi log rồi `_exit()`luôn) |
+
+📌 Nếu hệ thống bật core dump (`ulimit -c unlimited`) thì file dump sẽ nằm trong `/core`, giúp debug qua `gdb`.
+
+---
+
+## 🚪 **2. Tín hiệu điều khiển hoặc yêu cầu kết thúc**
+
+| Tín hiệu           | Mô tả                                     | Ứng dụng thực tế                       | Có thể bắt không? |
+| -------------------- | ------------------------------------------- | ------------------------------------------ | --------------------- |
+| `SIGHUP`(1)        | Treo terminal, yêu cầu daemon reload      | `nginx`,`sshd`dùng SIGHUP để reload | ✅ Có thể bắt      |
+| `SIGINT`(2)        | Ctrl + C từ terminal                       | Ngắt tiến trình foreground              | ✅ Có thể bắt      |
+| `SIGPIPE`(13)      | Ghi vào pipe/socket không có đầu đọc | `write()`vào socket bị đóng          | ✅ Có thể bắt      |
+| `SIGTERM`(15)      | Yêu cầu kết thúc êm đẹp              | `kill <pid>`gửi mặc định `SIGTERM` | ✅ Có thể bắt      |
+| `SIGUSR1/2`(10/12) | Tín hiệu tùy người dùng định nghĩa | Giao tiếp giữa tiến trình              | ✅ Có thể bắt      |
+
+💡 Daemon thường xử lý `SIGHUP`, `SIGTERM`, `SIGUSR1` để reload, shutdown hoặc trigger custom actions.
+
+---
+
+## ⏸️▶️ **3. Tín hiệu Job Control: Dừng & Tiếp tục**
+
+| Tín hiệu      | Mô tả                           | Đặc điểm kỹ thuật            | Có thể bắt không? |
+| --------------- | --------------------------------- | ---------------------------------- | --------------------- |
+| `SIGSTOP`(19) | Dừng tiến trình tức thì      | ❌ Không thể bắt/chặn/bỏ qua  | ❌                    |
+| `SIGTSTP`(20) | Ctrl + Z → dừng từ terminal    | Dùng trong shell                  | ✅ Có thể bắt      |
+| `SIGCONT`(18) | Tiếp tục tiến trình bị dừng | Kích hoạt trở lại tiến trình | ✅ Có thể bắt      |
+
+📌 `SIGSTOP` là “tuyệt đối” — giống như nút “Pause” của Kernel, không thương lượng 😅.
+
+---
+
+## 👶 **4. Tín hiệu quản lý tiến trình con**
+
+| Tín hiệu      | Mô tả                        | Tác dụng thực tế                                   |
+| --------------- | ------------------------------ | ------------------------------------------------------ |
+| `SIGCHLD`(17) | Khi con thoát hoặc bị dừng | Giúp tiến trình cha gọi `wait()`để dọn zombie |
+
+💡 Cực kỳ quan trọng trong hệ thống đa tiến trình. Nếu không xử lý `SIGCHLD`, sẽ tạo tiến trình  **zombie** !
+
+---
+
+## 🔒 **5. Tín hiệu tuyệt đối — Kernel Master Control**
+
+| Tín hiệu      | Mô tả                                           | Không thể chặn, bắt hay bỏ qua |
+| --------------- | ------------------------------------------------- | ----------------------------------- |
+| `SIGKILL`(9)  | Kernel “ép chết” tiến trình ngay tức khắc | ✅ Absolute                         |
+| `SIGSTOP`(19) | Kernel “đóng băng” tiến trình hoàn toàn  | ✅ Absolute                         |
+
+⛔ Anh không thể dùng `sigaction()` để bắt hay ignore chúng → chỉ có Kernel hoặc `kill -9` mới gửi được.
+
+---
+
+## 🧠 Mẹo thực chiến
+
+* Dùng `sigaction()` thay vì `signal()` để xử lý linh hoạt hơn.
+* Nếu dùng `SIGUSR1/2`, nên tài liệu rõ trong team: mỗi tiến trình hiểu 2 tín hiệu theo cách riêng.
+* Không nên “bắt sống” `SIGSEGV` rồi cố tiếp tục chạy — chỉ nên ghi log và thoát an toàn.
+
+---
+
+## ✉️ **4.3. Gửi Tín hiệu**
+
+### 🔹 Từ Shell:
+
+* `kill PID`
+
+  → Gửi `SIGTERM` (15) mặc định.
+* `kill -s SIGNAL_NAME PID`
+
+  → Ví dụ: `kill -s HUP 1234`.
+* `kill -SIGNAL_NUMBER PID`
+
+  → Ví dụ: `kill -9 1234`.
+* `killall PROGRAM_NAME`
+
+  → Gửi tín hiệu tới tất cả tiến trình có tên `PROGRAM_NAME`.
+
+### 🔹 Từ chương trình C/C++:
+
+* `int kill(pid_t pid, int sig);`
+
+  → Gửi tín hiệu `sig` tới tiến trình `pid`. Cần quyền hợp lệ (thường là cùng UID hoặc root).
+* `int raise(int sig);`
+
+  → Gửi tín hiệu `sig` tới chính tiến trình gọi.
+* `unsigned int alarm(unsigned int seconds);`
+
+  → Đặt hẹn giờ gửi `SIGALRM` tới chính tiến trình sau `seconds` giây.
+
+---
+
+## 🛡️ **4.4. Xử lý Tín hiệu (Signal Handling)**
+
+Một tiến trình có thể thay đổi hành vi khi nhận tín hiệu bằng cách cài đặt **Signal Handler** — hàm mà Kernel gọi khi tín hiệu tới.
+
+### ⚠️ `signal()` – Cũ, không khuyến nghị
+
+```cpp
+void (*signal(int sig, void (*func)(int)))(int);
+```
+
+* Dễ gây  **race condition** , hành vi không nhất quán.
+* Handler thường bị reset về mặc định sau khi xử lý.
+* 📛 Không khuyến khích dùng trong phần mềm mới.
+
+### ✅ `sigaction()` – Chuẩn POSIX, mạnh mẽ
+
+```cpp
+int sigaction(int sig, const struct sigaction *act, struct sigaction *oact);
+```
+
+Cung cấp điều khiển chi tiết qua `struct sigaction`:
+
+| Thành phần   | Ý nghĩa                                                                  |
+| -------------- | -------------------------------------------------------------------------- |
+| `sa_handler` | Hàm xử lý tín hiệu, hoặc `SIG_IGN`,`SIG_DFL`                     |
+| `sa_mask`    | Các tín hiệu sẽ bị**chặn tạm thời**khi handler đang xử lý |
+| `sa_flags`   | Các cờ kiểm soát hành vi đặc biệt:                                 |
+
+* `SA_RESTART`: Tự restart lại các system call bị ngắt
+* `SA_RESETHAND`: Handler sẽ bị reset sau lần gọi đầu tiên
+* `SA_SIGINFO`: Cho phép nhận thêm thông tin (`siginfo_t`, `ucontext`)
+* `SA_NODEFER`: Không chặn chính tín hiệu đang xử lý
+
+### 🧠 Quy tắc VÀNG cho Signal Handler
+
+* **Phải re-entrant!** → an toàn khi bị ngắt giữa chừng.
+* Chỉ dùng hàm async-signal-safe: `write()`, `_exit()`, `kill()`
+* ❌ Tuyệt đối tránh `printf()`, `malloc()`, `free()` trong handler!
+* ✅ Thực hành tốt nhất: chỉ gán cờ kiểu `volatile sig_atomic_t`, xử lý logic ở vòng lặp chính.
+
+---
+
+## 🎭 **4.5. Tập hợp Tín hiệu & Mặt nạ Tiến trình**
+
+### 🔹 Kiểu dữ liệu `sigset_t`: biểu diễn tập tín hiệu.
+
+#### 🧰 Các hàm tiện ích:
+
+```cpp
+sigemptyset(&set);   // Rỗng
+sigfillset(&set);    // Tất cả
+sigaddset(&set, sig); // Thêm tín hiệu
+sigdelset(&set, sig); // Gỡ tín hiệu
+sigismember(&set, sig); // Kiểm tra có trong set không
+```
+
+#### 🔧 `sigprocmask()`:
+
+```cpp
+int sigprocmask(int how, const sigset_t *set, sigset_t *oset);
+```
+
+Thay đổi mặt nạ tín hiệu của tiến trình:
+
+| `how`         | Hành vi                       |
+| --------------- | ------------------------------ |
+| `SIG_BLOCK`   | Thêm vào mặt nạ (chặn)    |
+| `SIG_UNBLOCK` | Gỡ khỏi mặt nạ (bỏ chặn) |
+| `SIG_SETMASK` | Ghi đè mặt nạ hiện tại   |
+
+→ Các tín hiệu bị chặn sẽ **không xử lý ngay** mà được  **treo (pending)** .
+
+#### 🕸️ `sigpending()`:
+
+```cpp
+int sigpending(sigset_t *set);
+```
+
+→ Kiểm tra tín hiệu nào đang treo.
+
+#### 🛌 `sigsuspend()`:
+
+```cpp
+int sigsuspend(const sigset_t *mask);
+```
+
+→ Tạm dừng tiến trình, thay mặt nạ, chờ tín hiệu → an toàn hơn `pause()`.
+
+---
+
+## 🤝 **4.6. Signals và POSIX Threads**
+
+| Đặc tính                                                   | Ý nghĩa                                                    |
+| ------------------------------------------------------------- | ------------------------------------------------------------ |
+| 📌 Tín hiệu là của**toàn tiến trình**            | Nhưng được**phân phối cho một luồng cụ thể** |
+| 🎭 Mặt nạ tín hiệu là**của từng luồng**         | Dùng `pthread_sigmask()`để chặn riêng từng luồng    |
+| 🧠 Signal Handler là**dùng chung toàn tiến trình** | Một luồng gọi → cả tiến trình biết                   |
+
+### 🧩 Quy tắc phân phối:
+
+| Loại tín hiệu                           | Gửi đến                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| Đồng bộ (`SIGSEGV`,`SIGFPE`)        | Gửi đến**luồng gây lỗi**                                |
+| Không đồng bộ (`SIGINT`,`SIGTERM`) | Gửi đến**một luồng không chặn tín hiệu**             |
+| Tuyệt đối (`SIGKILL`,`SIGSTOP`)     | Gửi đến**toàn bộ tiến trình**— không thể chặn/bắt |
+
+---
+
+Muốn mình format tiếp phần core dump, job control, hay tập tín hiệu người dùng (`SIGUSR1`, `SIGUSR2`) không Anh? Hay mình làm phần minh hoạ xử lý `SIGTERM` chuyên nghiệp như trong các daemon thực tế? 😄
+
 * **Ví dụ (C++): `signal_example.cpp` - Sử dụng `sigaction()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <csignal>  // For sigaction, sigemptyset, SIG_IGN, SIG_DFL, SIGTERM, SIGINT, SIGHUP, SIGUSR1
@@ -270,3 +419,202 @@ Một tiến trình có thể thay đổi hành vi mặc định khi nhận đư
      * Đặt cờ `daemon_running = 0`.
      * Ghi một thông báo "Daemon shutting down gracefully." vào log.
      * **Thử thách:** Trong trình xử lý tín hiệu, đảm bảo rằng `closelog()` (nếu dùng syslog) hoặc `file_log_stream.close()` (nếu dùng file log) được gọi. **Lưu ý:** Việc gọi `close()` hoặc `fclose()` trong signal handler có thể không an toàn trong mọi trường hợp. Một cách an toàn hơn là đặt cờ và để vòng lặp chính thực hiện việc đóng.
+
+# Step by Step:
+
+---
+
+## 🧩 **Bước 1: Khởi đầu — `sigaction()` là gì?**
+
+`sigaction()` là hàm dùng để đăng ký **hàm xử lý tín hiệu (signal handler)** một cách chi tiết và kiểm soát mạnh mẽ hơn `signal()` truyền thống.
+
+```cpp
+int sigaction(int sig, const struct sigaction *act, struct sigaction *oact);
+```
+
+* `sig`: tín hiệu muốn xử lý (ví dụ: `SIGINT`, `SIGTERM`)
+* `act`: con trỏ tới `struct sigaction` mô tả cách xử lý
+* `oact`: nếu không `nullptr`, sẽ lưu lại handler cũ
+
+---
+
+## ⚙️ **Bước 2: Khai báo và cấu hình `struct sigaction`**
+
+```cpp
+#include <signal.h>
+
+void my_handler(int sig) {
+    write(STDOUT_FILENO, "Received SIGINT\n", 16);
+}
+
+int main() {
+    struct sigaction sa {};
+    sa.sa_handler = my_handler;             // Gán handler
+    sigemptyset(&sa.sa_mask);               // Không chặn thêm tín hiệu nào khi handler chạy
+    sa.sa_flags = SA_RESTART;               // Tự restart system call bị gián đoạn
+
+    sigaction(SIGINT, &sa, nullptr);        // Đăng ký handler cho Ctrl+C
+    while (true) pause();                   // Đợi tín hiệu
+}
+```
+
+📌 `pause()` sẽ treo chương trình cho đến khi nhận một tín hiệu.
+
+---
+
+## 🔐 **Bước 3: Xử lý mặt nạ tín hiệu (Signal Mask)**
+
+`sa_mask` là tập hợp tín hiệu sẽ **bị chặn tạm thời** khi handler đang xử lý.
+
+```cpp
+sigemptyset(&sa.sa_mask);           // Bắt đầu với tập rỗng
+sigaddset(&sa.sa_mask, SIGTERM);   // Chặn SIGTERM khi xử lý SIGINT
+```
+
+→ Khi `SIGINT` xảy ra, handler chạy, và nếu `SIGTERM` cũng được gửi cùng lúc thì nó sẽ bị treo lại — tránh việc gián đoạn bên trong handler.
+
+---
+
+## 🧠 **Bước 4: Hiểu các `sa_flags` thường dùng**
+
+| Flag             | Ý nghĩa                                                                    |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `SA_RESTART`   | Tự restart system call nếu bị gián đoạn bởi tín hiệu                |
+| `SA_SIGINFO`   | Dùng hàm handler chi tiết hơn (3 tham số: sig, info, ucontext)          |
+| `SA_NODEFER`   | Không chặn tín hiệu hiện tại khi handler đang xử lý                 |
+| `SA_RESETHAND` | Chỉ gọi handler một lần rồi quay về hành vi mặc định (`SIG_DFL`) |
+
+📦 Với `SA_SIGINFO`, Anh sẽ đổi handler thành:
+
+```cpp
+void my_handler(int sig, siginfo_t *info, void *ctx) {
+    // info->si_pid: PID tiến trình gửi tín hiệu
+    // info->si_code: loại tín hiệu
+}
+```
+
+→ Rất hữu ích để phân tích nguồn gốc tín hiệu (ai gửi, lý do gì...).
+
+---
+
+## 🎯 **Bước 5: Các quy tắc vàng khi viết signal handler**
+
+* **Tránh dùng hàm không an toàn** : như `printf`, `malloc`, vì không re-entrant.
+* **Chỉ nên gọi `write()`, `kill()`, `_exit()` trong handler**
+* **Phương pháp tốt nhất** :
+
+```cpp
+  volatile sig_atomic_t got_signal = 0;
+  void handler(int sig) { got_signal = 1; }
+  // Trong main: kiểm tra cờ để xử lý thật
+```
+
+---
+
+## 🎭 **Bước 6: Quản lý tín hiệu bằng `sigset_t`**
+
+```cpp
+sigset_t set;
+sigemptyset(&set);
+sigaddset(&set, SIGINT);
+sigprocmask(SIG_BLOCK, &set, nullptr); // Chặn SIGINT
+```
+
+✅ Khi Anh chặn tín hiệu, nó không mất — nó sẽ bị “pending” và có thể kiểm tra bằng:
+
+```cpp
+sigpending(&set); // Kiểm tra các tín hiệu đang treo
+```
+
+---
+
+## 🛑 **Bước 7: Dừng tiến trình tạm thời để chờ tín hiệu**
+
+```cpp
+sigset_t suspend_mask;
+sigemptyset(&suspend_mask);
+sigsuspend(&suspend_mask); // Tạm thời thay mặt nạ và treo tiến trình
+```
+
+⚠️ Khác với `pause()`: an toàn hơn và tránh race condition.
+
+---
+
+## 🧵 **Bước 8: Tín hiệu trong chương trình có nhiều luồng (POSIX Threads)**
+
+| Đặc điểm                               | Ý nghĩa                             |
+| ------------------------------------------ | ------------------------------------- |
+| Tín hiệu thuộc toàn tiến trình       | Không phải riêng từng luồng      |
+| Mặt nạ tín hiệu là của từng luồng  | Mỗi luồng có thể chặn khác nhau |
+| Handler là dùng chung toàn tiến trình | Các luồng chia sẻ handler          |
+
+📌 Dùng `pthread_sigmask()` để chặn tín hiệu trong từng luồng:
+
+```cpp
+sigset_t set;
+sigemptyset(&set);
+sigaddset(&set, SIGINT);
+pthread_sigmask(SIG_BLOCK, &set, nullptr); // Chặn trong luồng hiện tại
+```
+
+---
+
+## 🧠 Vậy sau khi chặn thì chuyện gì xảy ra?
+
+* Nếu một tín hiệu bị chặn và được gửi đến tiến trình:
+  * Nó **không được xử lý ngay** (handler không chạy)
+  * Kernel sẽ **lưu trạng thái tín hiệu đó trong hàng chờ (pending)**
+* Khi tín hiệu đó được **gỡ khỏi mặt nạ** → Kernel **kích hoạt handler ngay lập tức** nếu vẫn còn chờ
+
+⏱️ Gần giống hàng đợi — nhưng tín hiệu thì không xếp hàng nhiều lần: mỗi loại chỉ pending  **một lần duy nhất** !
+
+---
+
+## 🧪 Có thể kiểm tra bằng `sigpending()`
+
+Ví dụ thực chiến:
+
+```cpp
+#include <signal.h>
+#include <unistd.h>
+#include <iostream>
+
+int main() {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+
+    // Chặn SIGINT
+    sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+    std::cout << "SIGINT đã bị chặn. Gửi Ctrl+C bây giờ...\n";
+    sleep(5); // Thời gian để Anh Ctrl+C
+
+    // Kiểm tra tín hiệu nào đang pending
+    sigset_t pending;
+    sigpending(&pending);
+
+    if (sigismember(&pending, SIGINT))
+        std::cout << "SIGINT đang pending!\n";
+
+    // Bỏ chặn → xử lý ngay
+    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+
+    pause(); // đợi handler chạy
+}
+```
+
+📌 Khi Ctrl+C trong lúc `sleep(5)` → `SIGINT` không chạy ngay → nhưng sẽ được xử lý sau khi `UNBLOCK`.
+
+---
+
+## 📦 Kết luận gọn gàng
+
+| Tình huống                  | Kết quả                                                     |
+| ----------------------------- | ------------------------------------------------------------- |
+| Tín hiệu bị chặn          | Được treo lại, không bị bỏ qua                         |
+| Gỡ chặn tín hiệu          | Tín hiệu pending được xử lý ngay                       |
+| `sigpending()`              | Kiểm tra những tín hiệu đang chờ                        |
+| Hành vi giống queue không? | Gần giống, nhưng mỗi loại tín hiệu chỉ pending 1 lần |
+
+---
