@@ -42,7 +42,7 @@ Hãy bắt đầu với Module đầu tiên!
 
 Module này sẽ giới thiệu khái niệm cơ bản về pipe và cách sử dụng các hàm cấp cao `popen()` và `pclose()` để tạo các kênh giao tiếp đơn giản.
 
-#### **1.1. Pipe là gì? (What Is a Pipe?)** 
+#### **1.1. Pipe là gì? (What Is a Pipe?)**
 
 * **Lý thuyết:** Pipe (ống dẫn) là một cơ chế giao tiếp liên tiến trình (IPC) cho phép luồng dữ liệu chảy **một chiều (unidirectional)** từ đầu ra của một tiến trình sang đầu vào của một tiến trình khác.
   * Hãy hình dung nó như một ống nước chỉ cho phép nước chảy theo một hướng nhất định.
@@ -52,14 +52,26 @@ Module này sẽ giới thiệu khái niệm cơ bản về pipe và cách sử 
   * **Minh họa:**
     **Code snippet**
 
-    ```
-    graph TD
-        T[Terminal Keyboard] --> C1(Cmd 1: Standard Input)
-        C1 --> C2(Cmd 1: Standard Output)
-        C2 --> P[Pipe]
-        P --> C3(Cmd 2: Standard Input)
-        C3 --> C4(Cmd 2: Standard Output)
-        C4 --> S[Terminal Screen]
+    ```plantuml
+    @startuml
+    title 🎯 Pipe Data Flow: cmd1 | cmd2
+
+    actor User as U
+    rectangle "Cmd 1\n(Std Input)" as C1
+    rectangle "Cmd 1\n(Std Output)" as C2
+    rectangle "Pipe" as P
+    rectangle "Cmd 2\n(Std Input)" as C3
+    rectangle "Cmd 2\n(Std Output)" as C4
+    actor Terminal as T
+
+    U --> C1
+    C1 --> C2
+    C2 --> P
+    P --> C3
+    C3 --> C4
+    C4 --> T
+
+    @enduml
     ```
 
     * Ở đây, `stdout` từ `Cmd 1` được "đẩy" vào `Pipe`, và `Pipe` này lại "đẩy" dữ liệu vào `stdin` của `Cmd 2`.
@@ -68,57 +80,109 @@ Module này sẽ giới thiệu khái niệm cơ bản về pipe và cách sử 
 
 #### **1.2. `popen()` và `pclose()`: Ống dẫn Tiến trình Cấp cao 🚀**
 
-Đây là cách đơn giản nhất để thiết lập giao tiếp pipe từ một chương trình, cho phép bạn tương tác với các lệnh shell.
 
-* **`popen()`:** Hàm này cho phép một chương trình (tiến trình gọi) khởi chạy một chương trình khác (tiến trình con) và thiết lập một pipe để trao đổi dữ liệu.
-  * **Syntax:**
-    **C++**
+## 🔧 `popen()` và `pclose()` — Kênh giao tiếp cấp cao với Shell
 
-    ```
-    #include <cstdio> // For popen, pclose, FILE
-    // FILE *popen(const char *command, const char *open_mode);
-    ```
-  * **`command`** : Một chuỗi ký tự chứa lệnh shell bạn muốn thực thi (ví dụ: `"ls -l"`, `"uname -a"`).
-  * **`open_mode`** : Chuỗi ký tự chỉ định chế độ của pipe:
-  * `"r"`: Mở pipe để **đọc** output từ `command`. Chương trình gọi có thể đọc từ `FILE *` được trả về. `stdout` của `command` được chuyển hướng vào pipe.
-  * `"w"`: Mở pipe để **ghi** input cho `command`. Chương trình gọi có thể ghi vào `FILE *` được trả về. `stdin` của `command` được chuyển hướng từ pipe.
-  * **Giá trị trả về:** Con trỏ `FILE *` (stream) nếu thành công, `NULL` nếu thất bại.
-  * **Cách hoạt động:** `popen()` thực hiện `fork()`, sau đó trong tiến trình con, nó thiết lập pipe và `exec()` một shell (`sh -c command`) để chạy lệnh của bạn.
-  * **Hạn chế quan trọng:**
+Hai hàm này là cách **giao tiếp một chiều** giữa chương trình C/C++ và một lệnh shell bên dưới.
 
-    * Chỉ hỗ trợ giao tiếp **một chiều** tại một thời điểm (`"r"` hoặc `"w"`). Để giao tiếp hai chiều, bạn cần sử dụng hai pipe riêng biệt.
-    * Có overhead vì phải khởi tạo một tiến trình shell con cho mỗi lần gọi.
-* **`pclose()`:** Hàm này dùng để đóng stream được mở bằng `popen()` và chờ tiến trình con (lệnh shell) kết thúc.
-  * **Syntax:**
-    **C++**
+### 🧠 Tưởng tượng thế này:
 
-    ```
-    #include <cstdio> // For popen, pclose, FILE
-    // int pclose(FILE *stream_to_close);
-    ```
-  * **`stream_to_close`** : Con trỏ `FILE *` được trả về bởi `popen()`.
-  * **Cách hoạt động:** `pclose()` sẽ **chờ** cho tiến trình con (lệnh shell) hoàn thành trước khi nó trả về.
-  * **Giá trị trả về:** Mã thoát (exit code) của tiến trình con. Trả về `-1` nếu lỗi.
-* **Liên hệ Embedded Linux:**
-  * `popen()` hữu ích khi bạn cần chương trình C/C++ của mình gọi một script shell hoặc một tiện ích hệ thống (như `uname`, `ls`, `grep`) và đọc/ghi dữ liệu đơn giản.
-  * Tiện lợi hơn so với `fork()` + `exec()` + `pipe()` cấp thấp cho các tác vụ đơn giản, nhưng cần lưu ý đến overhead của việc khởi tạo shell.
+* Anh có một chương trình C là "người gọi lệnh"
+* Anh cần gửi input cho lệnh đó (ghi) hoặc nhận output từ nó (đọc)
+* `popen()` tạo kết nối giống như một cái "ống dẫn" (pipe) giữa hai bên
 
-#### **1.3. Liên hệ với Windows và RTOS 🤝**
+---
 
-* **Windows:**
-  * Windows không có khái niệm `pipe()` và `popen()` theo chuẩn POSIX.
-  * Để thực hiện chức năng tương tự, Windows sử dụng **Anonymous Pipes** (được tạo bằng `CreatePipe()`) và **Named Pipes** (được tạo bằng `CreateNamedPipe()`). Các hàm này có API khác biệt đáng kể so với POSIX.
-  * `_popen()` và `_pclose()` (tiền tố gạch dưới thường thấy trong Microsoft Visual C++) là các hàm tương đương của Windows cho `popen()`/`pclose()`, cho phép chạy lệnh và trao đổi dữ liệu qua pipe.
-* **RTOS (Real-Time Operating Systems) như FreeRTOS:**
-  * Các RTOS thường **không có khái niệm "pipe"** theo kiểu Unix/Linux giữa các tiến trình/task.
-  * Để giao tiếp và trao đổi dữ liệu giữa các task, RTOS sử dụng các cơ chế được tối ưu hóa cho thời gian thực và đồng bộ hóa chặt chẽ hơn:
-    * **Message Queues (Hàng đợi tin nhắn):** Các task gửi và nhận các gói tin có cấu trúc. Đây là cơ chế phổ biến nhất và linh hoạt nhất trong RTOS.
-    * **Semaphores:** Dùng để đồng bộ hóa và báo hiệu sự kiện (tín hiệu nhị phân hoặc đếm).
-    * **Event Groups:** Cho phép các task chờ đợi một tập hợp các sự kiện xảy ra.
-    * **Direct Task Notifications:** Gửi thông báo trực tiếp từ task này sang task khác với overhead rất thấp.
-  * Mục tiêu của RTOS là tính xác định (determinism), do đó các cơ chế IPC của nó được thiết kế để có hành vi dự đoán được hơn so với pipes của Linux.
+### 🧨 1. `popen()` – Gọi lệnh shell và mở pipe
 
-#### **1.4. Ví dụ (C++): `popen_example.cpp` - Đọc/Ghi qua `popen()`**
+```cpp
+#include <cstdio> // popen, FILE
+
+FILE* popen(const char* command, const char* mode);
+```
+
+* **`command`** : chuỗi shell cần thực thi → ví dụ `"ls -l"`, `"uname -a"`, `"grep Hello"`
+* **`mode`** :
+* `"r"` → đọc output của lệnh đó (stdout → pipe → mình đọc)
+* `"w"` → ghi input vào lệnh đó (mình ghi → pipe → stdin của lệnh)
+
+📦  **Kết quả** : trả về con trỏ `FILE*` để thao tác như đọc/ghi file bình thường
+
+---
+
+### 🌀 Cách hoạt động bên trong:
+
+| Bước                             | Giải thích                             |
+| ---------------------------------- | ---------------------------------------- |
+| `popen()`gọi `fork()`         | tạo tiến trình con để chạy lệnh   |
+| Tiến trình con `exec()`lệnh   | thực thi `sh -c command`như shell    |
+| Tiến trình cha được `FILE*` | dùng `fgets()`,`fprintf()`với pipe |
+
+🛑 Pipe chỉ **một chiều** – nếu muốn hai chiều thì phải tạo 2 pipe thủ công!
+
+---
+
+### 🛑 2. `pclose()` – Đóng pipe, lấy exit code
+
+```cpp
+#include <cstdio> // pclose
+int pclose(FILE* stream);
+```
+
+* Đóng stream nhận được từ `popen()`
+* Đợi tiến trình con hoàn tất
+* Trả về mã thoát (`exit code`) của lệnh → có thể kiểm tra thành công/thất bại
+
+---
+
+## 🔬 Ví dụ dùng thực tế: Đọc hostname từ shell
+
+```cpp
+FILE* fp = popen("hostname", "r");
+if (!fp) perror("popen");
+
+char buffer[128];
+while (fgets(buffer, sizeof(buffer), fp)) {
+    printf("Host: %s", buffer);
+}
+int status = pclose(fp);
+```
+
+---
+
+## 🔗 Liên hệ với Embedded Linux
+
+| Tình huống                                   | Cách dùng `popen()`                      |
+| ---------------------------------------------- | -------------------------------------------- |
+| Lấy thông tin hệ thống (`uname`,`top`) | `popen("uname -a", "r")`đọc kết quả    |
+| Gửi dữ liệu cho lệnh shell xử lý         | `popen("grep pattern", "w")`ghi vào grep  |
+| Chạy script thu thập sensor                  | `popen("./sensor.sh", "r")`đọc giá trị |
+
+🎯 Dễ dùng hơn so với `fork()` + `pipe()` + `exec()` → đặc biệt khi xử lý đơn giản.
+
+---
+
+## 🔁 So sánh với Windows và RTOS
+
+### 🪟 Trên Windows:
+
+* Không có `popen()` gốc kiểu POSIX
+* Có `_popen()` và `_pclose()` tương đương (Visual Studio)
+* IPC dùng `CreatePipe()`, `CreateNamedPipe()`
+
+### ⚙️ Trên RTOS (như FreeRTOS):
+
+| POSIX `pipe()`equivalent | RTOS cơ chế thay thế                     |
+| -------------------------- | ------------------------------------------- |
+| Gửi data qua pipe         | **Message Queue**(`xQueueSend`)     |
+| Đồng bộ ghi/đọc       | **Semaphore** ,**Event Groups** |
+| Gửi tín hiệu cực nhẹ  | **Direct Task Notification**          |
+
+📌 RTOS không có tiến trình → không dùng được kiểu "gọi shell" như Linux. IPC của RTOS được tối ưu để chạy nhanh, nhẹ, chính xác.
+
+---
+
+### **1.4. Ví dụ (C++): `popen_example.cpp` - Đọc/Ghi qua `popen()`**
 
 **C++**
 

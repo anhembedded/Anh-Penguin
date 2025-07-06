@@ -62,7 +62,7 @@
 * **Ví dụ (C++): `detached_thread.cpp` - Đặt trạng thái Tách rời**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <pthread.h> // For pthread_create, pthread_attr_t, pthread_attr_init, pthread_attr_setdetachstate, pthread_attr_destroy, pthread_exit, pthread_self
@@ -192,7 +192,7 @@
 * **Ví dụ (C++): `realtime_thread.cpp` - Đặt thuộc tính Lập lịch**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <pthread.h> // For pthread_create, pthread_attr_t, pthread_attr_init, pthread_attr_setschedpolicy, pthread_attr_setschedparam, pthread_attr_destroy, pthread_exit, pthread_self

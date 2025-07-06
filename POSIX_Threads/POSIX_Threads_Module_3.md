@@ -2,7 +2,7 @@
 
 #### **3.1. Vấn đề Đồng bộ hóa (The Synchronization Problem) 💥**
 
-* **Lý thuyết:** Khi nhiều luồng trong cùng một tiến trình chia sẻ chung các biến toàn cục hoặc dữ liệu trên heap, nếu chúng cùng cố gắng truy cập và sửa đổi dữ liệu đó đồng thời mà không có sự phối hợp, sẽ xảy ra  **điều kiện tranh chấp (race condition)** .
+* **Lý thuyết:** Khi nhiều luồng trong cùng một tiến trình chia sẻ **chung các biến toàn cục** hoặc **dữ liệu trên heap**, nếu chúng cùng cố gắng truy cập và sửa đổi dữ liệu đó đồng thời mà không có sự phối hợp, sẽ xảy ra  **điều kiện tranh chấp (race condition)** .
   * **Ví dụ về Race Condition:**
     * Hai luồng cùng đọc giá trị `X` của một biến.
     * Luồng 1 tăng `X` lên 1, sau đó ghi `X+1` trở lại.
@@ -30,7 +30,7 @@
   * **Các hàm Pthreads Mutex:**
     **C++**
 
-    ```
+    ```cpp
     #include <pthread.h>
     // pthread_mutex_t mutex_object; // Khai báo biến mutex
 
@@ -45,15 +45,57 @@
     * `pthread_mutex_unlock()`: Mở khóa mutex.
     * `pthread_mutex_destroy()`: Hủy mutex. Cần hủy mutex khi không còn sử dụng để giải phóng tài nguyên.
     * **Giá trị trả về:** `0` nếu thành công, khác `0` (mã lỗi) nếu thất bại. **Lưu ý:** Các hàm `pthread_mutex_`  **không thiết lập `errno`** .
-* **Deadlock (Tắc nghẽn) với Mutexes:**
 
-  * Xảy ra khi một luồng cố gắng khóa một mutex mà chính nó đã khóa (đối với "fast mutex" mặc định), hoặc khi hai luồng khóa hai mutex theo thứ tự ngược nhau (ví dụ: Luồng A khóa M1 rồi M2; Luồng B khóa M2 rồi M1).
-  * Để tránh deadlock, hãy luôn khóa các mutex theo một **thứ tự nhất quán** trên toàn bộ chương trình.
+  ---
+
+  ## 🔒 Deadlock với Mutex
+
+  ### ✅ Trường hợp 1: Luồng tự khóa lại chính mutex nó đã giữ
+
+  **Giả định:**
+
+
+  * Dùng loại mutex mặc định là `PTHREAD_MUTEX_DEFAULT` (thường là “fast mutex”)
+  * Luồng A đã **lock** `M1`
+  * Sau đó, nó **gọi lại `pthread_mutex_lock(M1)`** → vì đã giữ rồi, nó sẽ **đợi chính nó** → không bao giờ xong
+
+  📛 → **Bị kẹt (deadlock) vĩnh viễn**
+
+  > 💡 Nếu muốn cho phép mutex được luồng gọi nhiều lần, phải dùng loại `recursive mutex`.
+  >
+
+  ---
+
+  ### ✅ Trường hợp 2: Hai luồng giữ hai mutex, rồi cùng chờ nhau – thứ tự ngược nhau
+
+  **Ví dụ cụ thể:**
+
+  | Luồng A            | Luồng B            |
+  | ------------------- | ------------------- |
+  | Lock `M1`         | Lock `M2`         |
+  | → rồi Lock `M2` | → rồi Lock `M1` |
+
+  📛 → Mỗi luồng đang giữ một mutex và **muốn khóa mutex còn lại**
+
+  → Nhưng mutex đó **đang bị luồng kia giữ rồi**
+
+  → → **Cả hai chờ nhau mãi mãi** →  **Deadlock** !
+
+  ---
+
+  ## 🧠 Giải pháp: Dùng **thứ tự nhất quán**
+
+  * Quy ước rõ: nếu nhiều mutex phải khóa, **luôn khóa theo thứ tự tăng (M1 → M2 → M3...)**
+  * Dù ở bất kỳ luồng hay hàm nào, **giữ nguyên thứ tự**
+
+  ✅ Nhờ đó, không bao giờ xảy ra “luồng A giữ M1 rồi đòi M2” trong khi “luồng B giữ M2 rồi đòi M1”
+
+
 * **Liên hệ Embedded Linux:** Mutex là công cụ đồng bộ hóa cơ bản và được sử dụng rộng rãi nhất trong các ứng dụng nhúng đa luồng để bảo vệ các biến trạng thái, buffer dữ liệu, hoặc truy cập phần cứng.
 * **Ví dụ (C++): `mutex_sync.cpp` - Đồng bộ hóa với Mutex**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <pthread.h> // For pthread_mutex_t, pthread_mutex_init, pthread_mutex_lock, pthread_mutex_unlock, pthread_mutex_destroy
@@ -179,7 +221,7 @@
 * **Các hàm Pthreads Semaphore:**
   **C++**
 
-  ```
+  ```cpp
   #include <semaphore.h> // For sem_t, sem_init, sem_wait, sem_post, sem_destroy
   // sem_t semaphore_object; // Khai báo biến semaphore
 
@@ -207,7 +249,7 @@
 * **Ví dụ (C++): `semaphore_sync.cpp` - Đồng bộ hóa với Semaphore (Producer-Consumer)**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <pthread.h> // For pthread_create, pthread_join, pthread_exit

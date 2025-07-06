@@ -6,7 +6,7 @@
   * **Syntax:**
     **C++**
 
-    ```
+    ```cpp
     #include <pthread.h>
     // int pthread_cancel(pthread_t thread);
     ```
@@ -22,7 +22,7 @@ Luồng mục tiêu có thể kiểm soát cách nó phản ứng với yêu c�
   * **Lý thuyết:** Xác định liệu luồng có chấp nhận yêu cầu hủy hay không.
     **C++**
 
-    ```
+    ```cpp
     #include <pthread.h>
     // int pthread_setcancelstate(int state, int *oldstate);
     ```
@@ -54,7 +54,7 @@ Luồng mục tiêu có thể kiểm soát cách nó phản ứng với yêu c�
     * Hàm  **`pthread_testcancel()`** : Bạn có thể chèn hàm này vào bất kỳ đâu trong code của mình để tạo một điểm hủy bỏ tường minh. Nếu có yêu cầu hủy đang chờ và luồng đang ở trạng thái `PTHREAD_CANCEL_ENABLE`, `pthread_testcancel()` sẽ khiến luồng bị hủy ngay lập tức tại điểm đó.
       **C++**
 
-      ```
+      ```cpp
       #include <pthread.h>
       // void pthread_testcancel(void);
       ```
@@ -69,7 +69,7 @@ Luồng mục tiêu có thể kiểm soát cách nó phản ứng với yêu c�
   * **Các hàm:**
     **C++**
 
-    ```
+    ```cpp
     #include <pthread.h>
     // void pthread_cleanup_push(void (*routine)(void *), void *arg);
     // void pthread_cleanup_pop(int execute);
@@ -86,7 +86,7 @@ Luồng mục tiêu có thể kiểm soát cách nó phản ứng với yêu c�
 
 **C++**
 
-```
+```cpp
 #include <iostream>
 #include <string>
 #include <pthread.h> // For pthreads API

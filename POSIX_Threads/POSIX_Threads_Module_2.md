@@ -18,7 +18,7 @@
 * **Lý thuyết:** Mỗi luồng mới bạn tạo ra phải có một hàm để nó bắt đầu thực thi. Hàm này phải tuân thủ một chữ ký (signature) cụ thể:
   **C++**
 
-  ```
+  ```cpp
   void *(*start_routine)(void *);
   ```
 
@@ -31,7 +31,7 @@
 * **Lý thuyết:** Hàm **`pthread_create()`** là hàm chính để tạo một luồng mới.
   **C++**
 
-  ```
+  ```cpp
   #include <pthread.h>
   int pthread_create(pthread_t *thread,       // [OUT] Con trỏ tới biến pthread_t để lưu ID luồng mới
                      const pthread_attr_t *attr, // [IN] Thuộc tính của luồng (thường là NULL cho mặc định)
@@ -51,7 +51,7 @@
 * **Lý thuyết:** Hàm **`pthread_exit()`** được một luồng gọi để **tự kết thúc** việc thực thi của nó.
   **C++**
 
-  ```
+  ```cpp
   #include <pthread.h>
   void pthread_exit(void *retval);
   ```
@@ -83,7 +83,7 @@
 
 **C++**
 
-```
+```cpp
 #include <iostream>
 #include <string>
 #include <pthread.h> // For pthreads API
@@ -225,3 +225,129 @@ int main() {
      * Hàm luồng sẽ nhận đối số, in ra các thành viên của `struct ThreadArgs` và sau đó giải phóng bộ nhớ đã cấp phát động cho `ThreadArgs`.
      * Luồng chính sẽ `pthread_join()` luồng con.
    * **Thử thách:** Đảm bảo bộ nhớ được cấp phát động cho `ThreadArgs` được giải phóng đúng cách (trong hàm luồng) để tránh rò rỉ bộ nhớ.
+
+
+
+---
+
+## 🚀 **Bước 1: Chuẩn bị môi trường Pthreads**
+
+### ✅ Phải có:
+
+| Thành phần             | Vai trò                                                           |
+| ------------------------ | ------------------------------------------------------------------ |
+| `#include <pthread.h>` | Header khai báo API luồng của POSIX                             |
+| `-pthread`             | Cờ biên dịch & liên kết thư viện Pthreads (`libpthread`)  |
+| `_REENTRANT`(optional) | Với compiler đời cũ, giúp libc hỗ trợ các hàm thread-safe |
+
+💡 Trên GCC hiện đại (Linux nhúng, PC), không cần `#define _REENTRANT`, chỉ cần `-pthread`.
+
+### 📦 Cách biên dịch:
+
+```bash
+g++ my_thread.cpp -o my_thread -pthread
+```
+
+---
+
+## 🎯 **Bước 2: Viết hàm cho luồng mới**
+
+Luồng cần một "điểm bắt đầu", giống như `main()` với tiến trình.
+
+```cpp
+void* my_thread_func(void* arg) {
+    // xử lý ở đây...
+    return NULL;
+}
+```
+
+💡 Hàm luồng **phải** nhận `void*` và trả về `void*` → có thể truyền bất kỳ dữ liệu nào bằng cách ép kiểu.
+
+---
+
+## 👷‍♂️ **Bước 3: Tạo luồng bằng `pthread_create()`**
+
+```cpp
+pthread_t tid;
+
+pthread_create(&tid, NULL, my_thread_func, NULL);
+```
+
+| Tham số           | Giải thích                                          |
+| ------------------ | ----------------------------------------------------- |
+| `&tid`           | Địa chỉ biến `pthread_t`lưu ID luồng          |
+| `NULL`           | Không cấu hình đặc biệt cho thuộc tính luồng |
+| `my_thread_func` | Hàm mà luồng mới sẽ chạy                        |
+| `NULL`           | Đối số truyền cho hàm luồng                     |
+
+💡 Truyền dữ liệu? Tạo struct rồi ép con trỏ sang `void*`!
+
+---
+
+## 📌 Bonus: Lấy ID của luồng hiện tại
+
+```cpp
+pthread_self(); // trả về pthread_t của luồng đang chạy
+```
+
+---
+
+## 🔚 **Bước 4: Luồng kết thúc bằng `pthread_exit()`**
+
+```cpp
+void* my_thread_func(void* arg) {
+    // xử lý
+    pthread_exit(NULL); // hoặc truyền con trỏ trả về
+}
+```
+
+🧨 **Lưu ý cực quan trọng:**
+
+* Đừng bao giờ `return &biến_cục_bộ` trong luồng!
+* Stack luồng sẽ biến mất → con trỏ sẽ trở thành "điểm chết" (dangling pointer)
+
+→ Nếu muốn trả về dữ liệu: dùng `new`, `malloc`, hoặc dữ liệu tĩnh/toàn cục.
+
+---
+
+## 🤝 **Bước 5: Chờ luồng bằng `pthread_join()`**
+
+Trong `main()` hoặc luồng khác:
+
+```cpp
+void* retval;
+pthread_join(tid, &retval);
+```
+
+| Tham số    | Giải thích                               |
+| ----------- | ------------------------------------------ |
+| `tid`     | ID của luồng cần chờ                   |
+| `&retval` | Biến nhận giá trị trả về của luồng |
+
+💡 Nếu không cần trả giá trị → truyền `NULL`.
+
+🔐 Nếu không `join()` luồng → luồng trở thành "zombie", không được thu hồi tài nguyên.
+
+---
+
+## 📦 Tổng hợp khung chương trình tối thiểu:
+
+```cpp
+#include <pthread.h>
+#include <iostream>
+
+void* my_thread_func(void* arg) {
+    std::cout << "🧵 Hello from thread!\n";
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t tid;
+    pthread_create(&tid, NULL, my_thread_func, NULL);
+    pthread_join(tid, NULL);
+    std::cout << "✅ Thread finished.\n";
+    return 0;
+}
+```
+
+---
