@@ -43,7 +43,7 @@
 * **Ví dụ (C++): `fifo_create_access.cpp` - Tạo và Truy cập FIFO**
   **C++**
 
-  ```
+  ```CPP
   #include <iostream>
   #include <string>
   #include <fcntl.h>    // For open, O_RDONLY, O_WRONLY, O_CREAT
@@ -392,4 +392,3 @@
 
 ---
 
-Hãy dành thời gian để hiểu sâu lý thuyết và thực hành các bài tập này. Named Pipes là một công cụ IPC rất hữu ích cho các ứng dụng thực tế. Khi bạn đã sẵn sàng, hãy cho tôi biết để chuyển sang  **Module 4: Ứng dụng Client/Server với FIFOs** !
