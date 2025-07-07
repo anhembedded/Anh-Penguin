@@ -80,7 +80,6 @@ Module này sẽ giới thiệu khái niệm cơ bản về pipe và cách sử 
 
 #### **1.2. `popen()` và `pclose()`: Ống dẫn Tiến trình Cấp cao 🚀**
 
-
 ## 🔧 `popen()` và `pclose()` — Kênh giao tiếp cấp cao với Shell
 
 Hai hàm này là cách **giao tiếp một chiều** giữa chương trình C/C++ và một lệnh shell bên dưới.
@@ -186,7 +185,7 @@ int status = pclose(fp);
 
 **C++**
 
-```
+```cpp
 #include <iostream>
 #include <string>
 #include <cstdio>   // For popen, pclose, FILE, BUFSIZ, sprintf, fread, fwrite
@@ -321,3 +320,72 @@ int main() {
      * Ghi output này vào một file log (`command_output.log`) với dấu thời gian hiện tại.
      * In ra thông báo thành công/thất bại và mã thoát của lệnh.
    * **Thử thách:** Xử lý các lỗi khi `popen()` thất bại hoặc khi ghi log file.
+
+
+---
+
+### 🔧 `FILE *popen(const char *command, const char *type);`
+
+| Tham số       | Ý nghĩa                                                                               |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `command`    | Chuỗi lệnh shell cần thực thi, ví dụ `"ls -l"` hoặc `"grep hello"`           |
+| `type`       | Kiểu luồng mở:`"r"` để đọc (output từ tiến trình), `"w"` để ghi (input) |
+| Trả về       | Con trỏ `FILE*` để dùng như file stream                                          |
+| Sử dụng với | `fgets()`, `fread()`, `fwrite()`, v.v.                                            |
+
+🟢 Ví dụ: đọc kết quả từ lệnh `ls`:
+
+```c
+FILE *fp = popen("ls", "r");
+```
+
+---
+
+### 📦 `size_t fread(void *ptr, size_t size, size_t count, FILE *stream);`
+
+| Tham số   | Ý nghĩa                                                                 |
+| ---------- | ------------------------------------------------------------------------- |
+| `ptr`    | Bộ đệm (buffer) nơi dữ liệu được lưu sau khi đọc              |
+| `size`   | Kích thước mỗi phần tử cần đọc (đơn vị byte)                  |
+| `count`  | Số lượng phần tử cần đọc                                          |
+| `stream` | Luồng đầu vào (`FILE*`), có thể từ file, stdin hoặc `popen()` |
+| Trả về   | Tổng số phần tử thực sự đã đọc                                  |
+
+🟢 Ví dụ:
+
+```c
+char buffer[128];
+size_t n = fread(buffer, 1, sizeof(buffer), fp); // đọc raw data
+```
+
+---
+
+### 📄 `char *fgets(char *str, int n, FILE *stream);`
+
+| Tham số   | Ý nghĩa                                                                     |
+| ---------- | ----------------------------------------------------------------------------- |
+| `str`    | Con trỏ đến buffer để lưu chuỗi đã đọc                             |
+| `n`      | Kích thước tối đa của chuỗi (`n-1` ký tự + dấu kết thúc `\0`) |
+| `stream` | Luồng đầu vào (`FILE*`)                                                 |
+| Trả về   | Con trỏ tới `str` nếu thành công, hoặc `NULL` nếu lỗi/EOF         |
+
+🟢 Ví dụ:
+
+```c
+char line[256];
+if (fgets(line, sizeof(line), fp)) {
+    printf(">> %s", line);
+}
+```
+
+---
+
+### 🔗 Mối liên hệ giữa các hàm
+
+- `popen()` cung cấp một `FILE*` giống như một file, giúp bạn đọc output của một tiến trình.
+- `fgets()` và `fread()` là cách đọc dữ liệu từ `FILE*`:
+  - `fgets()` dùng cho chuỗi (text).
+  - `fread()` dùng cho dữ liệu nhị phân (binary).
+- Có thể dùng `fwrite()` hoặc `fprintf()` nếu bạn dùng `popen()` ở chế độ `"w"` để ghi vào tiến trình.
+
+---

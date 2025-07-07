@@ -1,112 +1,158 @@
-
-# **Module 2: System Call `pipe()` và `dup()`/`dup2()` ⚙️💧**
+## **Module 2: System Call `pipe()` và `dup()`/`dup2()` ⚙️💧**
 
 #### **2.1. System Call `pipe()`: Tạo Unnamed Pipe (Pipe không tên) 🔗**
 
-* **Lý thuyết:** Khác với `popen()` là một hàm thư viện cấp cao, `pipe()` là một **System Call** cấp thấp. Nó tạo ra một "pipe không tên" (unnamed pipe) – một kênh giao tiếp một chiều giữa các tiến trình liên quan (thường là cha và con).
+Bạn đã học về `popen()`, một hàm thư viện cấp cao tiện lợi. Bây giờ, chúng ta sẽ đi xuống cấp độ thấp hơn với  **`pipe()`** , một **System Call** (cuộc gọi hệ thống) cho phép bạn trực tiếp yêu cầu Kernel tạo ra một kênh giao tiếp.
 
-  * **Syntax:**
-    **C++**
+---
 
-    ```
-    #include <unistd.h> // For pipe, read, write
-    // int pipe(int file_descriptor[2]);
-    ```
-  * **`file_descriptor[2]`** : Đây là một mảng hai số nguyên File Descriptor mà hàm `pipe()` sẽ điền vào:
-  * `file_descriptor[0]` (hay `pipefd[0]`): Là đầu **đọc** của pipe (read end).
-  * `file_descriptor[1]` (hay `pipefd[1]`): Là đầu **ghi** của pipe (write end).
-  * **Nguyên tắc FIFO (First-In, First-Out):** Dữ liệu được ghi vào đầu ghi (`pipefd[1]`) sẽ được đọc từ đầu đọc (`pipefd[0]`) theo đúng thứ tự đã ghi.
-  * **Giá trị trả về:** `0` nếu thành công, `-1` nếu thất bại (và `errno` được thiết lập, ví dụ: `EMFILE` - quá nhiều FD đang mở, `ENFILE` - bảng file hệ thống đầy).
-  * **Đặc điểm:** Pipe không tên chỉ có thể được sử dụng giữa các tiến trình có chung nguồn gốc (ví dụ: cha và con sau `fork()`), vì các file descriptor của pipe được kế thừa qua `fork()`.
-  * **Lưu ý quan trọng:** Vì `pipe()` trả về File Descriptor (`int`), bạn phải dùng các System Call cấp thấp như **`read()`** và **`write()`** để trao đổi dữ liệu qua pipe này, không phải các hàm `stdio` như `fread()`/`fwrite()`.
-* **Minh họa (Pipe concept):**
+### **1. `pipe()` là gì? 💧**
+
+`pipe()` tạo ra một  **"pipe không tên" (unnamed pipe)** . Anh có thể hình dung nó như một ống dẫn dữ liệu tạm thời, chỉ tồn tại trong bộ nhớ Kernel và không có tên trên hệ thống file (khác với Named Pipes mà ta sẽ học sau).
+
+Mục đích chính của nó là tạo một kênh giao tiếp **một chiều (unidirectional)** giữa các  **tiến trình có quan hệ (related processes)** , thường là giữa tiến trình cha và tiến trình con được tạo ra từ `fork()`.
+
+---
+
+### **2. Cú pháp và Cách hoạt động ⚙️**
+
+**C++**
+
+```cpp
+#include <unistd.h> // Cần thiết cho hàm pipe(), read(), write()
+
+// Cú pháp hàm:
+// int pipe(int file_descriptor[2]);
+```
+
+Khi anh gọi `pipe(pipe_fds)` (với `pipe_fds` là một mảng `int` có 2 phần tử):
+
+* Kernel sẽ tạo ra một **pipe mới** trong bộ nhớ.
+* Nó sẽ tạo ra **hai File Descriptor (FD)** mới và điền chúng vào mảng `pipe_fds` của anh:
+  * **`pipe_fds[0]`** : Đây là **đầu đọc (read end)** của pipe. Bất kỳ dữ liệu nào được ghi vào pipe sẽ được đọc từ FD này.
+  * **`pipe_fds[1]`** : Đây là **đầu ghi (write end)** của pipe. Anh sẽ ghi dữ liệu vào pipe thông qua FD này.
+* **Nguyên tắc FIFO (First-In, First-Out):** Dữ liệu được ghi vào `pipe_fds[1]` sẽ được đọc từ `pipe_fds[0]` theo đúng thứ tự đã ghi. Tức là, byte đầu tiên được ghi sẽ là byte đầu tiên được đọc.
+* **Giá trị trả về:**
+  * `0`: Nếu pipe được tạo thành công.
+  * `-1`: Nếu thất bại (ví dụ: `errno` sẽ được đặt thành `EMFILE` nếu tiến trình đã mở quá nhiều File Descriptor, hoặc `ENFILE` nếu bảng File Descriptor của hệ thống đã đầy).
+
+---
+
+### **3. Luồng dữ liệu và Phạm vi sử dụng 🔄**
+
+* **Luồng dữ liệu:**
   **Code snippet**
 
   ```
   graph TD
-      P1(Process A) -->|write(pipefd[1])| Pipe[Pipe Buffer (FIFO)]
-      Pipe -->|read(pipefd[0])| P2(Process B)
-  ```
-* **Liên hệ Embedded Linux:** `pipe()` là cơ chế cơ bản để tạo các đường ống dữ liệu nội bộ giữa các phần khác nhau của ứng dụng đa tiến trình của bạn, ví dụ: một tiến trình thu thập dữ liệu và một tiến trình khác xử lý hoặc lưu trữ nó.
-* **Ví dụ (C++): `pipe_simple.cpp` - Tạo và dùng Pipe trong một tiến trình**
-  **C++**
-
-  ```
-  #include <iostream>
-  #include <string>
-  #include <unistd.h>   // For pipe, read, write
-  #include <cstdlib>    // For EXIT_SUCCESS, EXIT_FAILURE
-  #include <cstring>    // For memset, strlen, strerror
-  #include <errno.h>    // For errno
-
-  // Logger namespace
-  namespace AppLogger {
-      enum LogLevel { TRACE_L, DEBUG_L, INFO_L, SUCCESS_L, WARNING_L, ERROR_L, CRITICAL_L };
-      static const std::map<LogLevel, std::string> LogLevelNames = {
-          {TRACE_L,    "TRACE   "}, {DEBUG_L,    "DEBUG   "}, {INFO_L,     "INFO    "},
-          {SUCCESS_L,  "SUCCESS "}, {WARNING_L,  "WARNING "}, {ERROR_L,    "ERROR   "},
-          {CRITICAL_L, "CRITICAL"}
-      };
-      void log(LogLevel level, const std::string& message) {
-          std::cout << LogLevelNames.at(level) << ": " << message << std::endl;
-      }
-  }
-
-  int main() {
-      int pipe_fds[2]; // Mảng 2 File Descriptor cho pipe
-      const char some_data[] = "Hello Pipe World!";
-      char buffer[BUFSIZ + 1]; // BUFSIZ from stdio.h, but used here for generic buffer size
-      ssize_t data_processed;
-
-      memset(buffer, '\0', sizeof(buffer)); // Khởi tạo buffer
-
-      AppLogger::log(AppLogger::INFO_L, "--- Demonstrating simple pipe() ---");
-
-      // Tạo pipe
-      if (pipe(pipe_fds) == -1) {
-          AppLogger::log(AppLogger::CRITICAL_L, "Failed to create pipe: " + std::string(strerror(errno)));
-          return EXIT_FAILURE;
-      }
-      AppLogger::log(AppLogger::SUCCESS_L, "Pipe created successfully.");
-      AppLogger::log(AppLogger::INFO_L, "Read end FD: " + std::to_string(pipe_fds[0]) + ", Write end FD: " + std::to_string(pipe_fds[1]));
-
-      // Ghi dữ liệu vào đầu ghi của pipe
-      AppLogger::log(AppLogger::INFO_L, "Writing data to pipe's write end (FD " + std::to_string(pipe_fds[1]) + "): '" + some_data + "'");
-      data_processed = write(pipe_fds[1], some_data, strlen(some_data));
-      if (data_processed == -1) {
-          AppLogger::log(AppLogger::ERROR_L, "Write to pipe failed: " + std::string(strerror(errno)));
-          close(pipe_fds[0]); close(pipe_fds[1]);
-          return EXIT_FAILURE;
-      }
-      AppLogger::log(AppLogger::SUCCESS_L, "Wrote " + std::to_string(data_processed) + " bytes to pipe.");
-
-      // Đọc dữ liệu từ đầu đọc của pipe
-      AppLogger::log(AppLogger::INFO_L, "Reading data from pipe's read end (FD " + std::to_string(pipe_fds[0]) + ")...");
-      data_processed = read(pipe_fds[0], buffer, BUFSIZ);
-      if (data_processed == -1) {
-          AppLogger::log(AppLogger::ERROR_L, "Read from pipe failed: " + std::string(strerror(errno)));
-          close(pipe_fds[0]); close(pipe_fds[1]);
-          return EXIT_FAILURE;
-      } else if (data_processed == 0) {
-          AppLogger::log(AppLogger::WARNING_L, "Read 0 bytes (EOF).");
-      } else {
-          buffer[data_processed] = '\0'; // Null-terminate the string
-          AppLogger::log(AppLogger::SUCCESS_L, "Read " + std::to_string(data_processed) + " bytes: '" + std::string(buffer) + "'");
-      }
-
-      // Đóng các File Descriptor của pipe
-      AppLogger::log(AppLogger::INFO_L, "Closing pipe File Descriptors.");
-      close(pipe_fds[0]);
-      close(pipe_fds[1]);
-      AppLogger::log(AppLogger::SUCCESS_L, "Pipe FDs closed.");
-
-      AppLogger::log(AppLogger::INFO_L, "--- pipe() Demonstration Finished ---");
-
-      return EXIT_SUCCESS;
-  }
+      Writer_Process[Tiến trình Ghi] -->|Ghi vào pipefd[1]| Pipe_Buffer[Bộ đệm Pipe (FIFO)]
+      Pipe_Buffer -->|Đọc từ pipefd[0]| Reader_Process[Tiến trình Đọc]
   ```
 
-#### **2.2. `pipe()` qua `fork()`: Giao tiếp giữa Cha và Con 👨‍👧‍👦**
+  Trong sơ đồ trên:
+
+  * `Writer_Process` (Tiến trình Ghi) sẽ sử dụng `write(pipe_fds[1], ...)` để đẩy dữ liệu vào pipe.
+  * `Reader_Process` (Tiến trình Đọc) sẽ sử dụng `read(pipe_fds[0], ...)` để kéo dữ liệu từ pipe.
+* **Đặc điểm quan trọng:** Pipe không tên (unnamed pipe) chỉ có thể được sử dụng giữa các tiến trình có  **chung nguồn gốc (related processes)** . Điều này có nghĩa là chúng thường được tạo bởi một tiến trình cha và sau đó được các tiến trình con (tạo ra từ `fork()`) sử dụng, vì File Descriptor được kế thừa qua `fork()`.
+* **Lưu ý về `read()` và `write()`:** Vì `pipe()` trả về File Descriptor (`int`), anh **phải sử dụng các System Call cấp thấp** như **`read()`** và **`write()`** để trao đổi dữ liệu qua pipe này. Anh **không thể sử dụng** các hàm I/O cấp cao từ `stdio.h` như `fread()` hay `fwrite()` trực tiếp với các File Descriptor này (trừ khi anh chuyển đổi FD thành `FILE*` bằng `fdopen()`, nhưng điều đó lại thêm một lớp phức tạp khác).
+
+---
+
+### **4. Liên hệ với Embedded Linux 🤖**
+
+* `pipe()` là một cơ chế IPC cơ bản và rất hiệu quả để tạo các đường ống dữ liệu nội bộ trong các ứng dụng đa tiến trình trên thiết bị nhúng.
+* Ví dụ: một tiến trình con chuyên thu thập dữ liệu từ cảm biến có thể ghi dữ liệu thô vào một pipe, và tiến trình cha (hoặc một tiến trình con khác) có thể đọc từ pipe đó để xử lý hoặc lưu trữ dữ liệu. Điều này giúp tách biệt các chức năng và tối ưu hóa tài nguyên.
+
+---
+
+### **5. Ví dụ (C++): `pipe_simple.cpp` - Tạo và dùng Pipe trong một tiến trình**
+
+Ví dụ này minh họa cách tạo một pipe và sử dụng nó để ghi dữ liệu từ một "đầu" và đọc từ "đầu" còn lại,  **tất cả trong cùng một tiến trình** . Mặc dù điều này không phải là mục đích chính của pipe (vì nó chủ yếu dùng giữa các tiến trình khác nhau), nó giúp anh hiểu cơ chế cơ bản của việc ghi và đọc qua pipe.
+
+**C++**
+
+```cpp
+#include <iostream>   // For std::cout, std::cerr
+#include <string>     // For std::string, std::to_string
+#include <unistd.h>   // For pipe, read, write, close, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO
+#include <cstdlib>    // For EXIT_SUCCESS, EXIT_FAILURE
+#include <cstring>    // For memset, strlen, strerror (used by std::perror implicitly)
+#include <map>        // For std::map (just to define AppLogger style)
+#include <errno.h>    // For errno
+
+// Không sử dụng AppLogger::log nữa, thay bằng std::cout trực tiếp
+// namespace AppLogger { ... }
+
+int main() {
+    int pipe_fds[2]; // Mảng 2 File Descriptor cho pipe
+    const char some_data[] = "Hello Pipe World!";
+    char buffer[BUFSIZ + 1]; // BUFSIZ thường là 8192, định nghĩa trong <cstdio>
+    ssize_t data_processed;
+
+    std::memset(buffer, '\0', sizeof(buffer)); // Khởi tạo buffer
+
+    std::cout << "INFO    : --- Demonstrating simple pipe() ---" << std::endl;
+
+    // Tạo pipe
+    // Gọi pipe() với pipe_fds. Nếu thành công, pipe_fds[0] là đầu đọc, pipe_fds[1] là đầu ghi.
+    if (pipe(pipe_fds) == -1) {
+        std::cerr << "CRITICAL: Failed to create pipe: " << std::strerror(errno) << std::endl;
+        return EXIT_FAILURE;
+    }
+    std::cout << "SUCCESS : Pipe created successfully." << std::endl;
+    std::cout << "INFO    : Read end FD: " << pipe_fds[0] << ", Write end FD: " << pipe_fds[1] << std::endl;
+
+    // Ghi dữ liệu vào đầu ghi của pipe (pipe_fds[1])
+    std::cout << "INFO    : Writing data to pipe's write end (FD " << pipe_fds[1] << "): '" << some_data << "'" << std::endl;
+    data_processed = write(pipe_fds[1], some_data, std::strlen(some_data));
+    if (data_processed == -1) {
+        std::cerr << "ERROR   : Write to pipe failed: " << std::strerror(errno) << std::endl;
+        // Đóng các FD nếu có lỗi để tránh rò rỉ
+        close(pipe_fds[0]); close(pipe_fds[1]);
+        return EXIT_FAILURE;
+    }
+    std::cout << "SUCCESS : Wrote " << data_processed << " bytes to pipe." << std::endl;
+
+    // Đọc dữ liệu từ đầu đọc của pipe (pipe_fds[0])
+    std::cout << "INFO    : Reading data from pipe's read end (FD " << pipe_fds[0] << ")..." << std::endl;
+    data_processed = read(pipe_fds[0], buffer, BUFSIZ);
+    if (data_processed == -1) {
+        std::cerr << "ERROR   : Read from pipe failed: " << std::strerror(errno) << std::endl;
+        // Đóng các FD nếu có lỗi
+        close(pipe_fds[0]); close(pipe_fds[1]);
+        return EXIT_FAILURE;
+    } else if (data_processed == 0) {
+        // Đọc 0 bytes thường có nghĩa là EOF. Trong pipe, điều này xảy ra khi tất cả các đầu ghi đã đóng.
+        std::cout << "WARNING : Read 0 bytes (EOF from pipe). This means the write end was closed before reading." << std::endl;
+    } else {
+        buffer[data_processed] = '\0'; // Null-terminate chuỗi để in an toàn
+        std::cout << "SUCCESS : Read " << data_processed << " bytes: '" << std::string(buffer) << "'" << std::endl;
+    }
+
+    // Đóng các File Descriptor của pipe
+    std::cout << "INFO    : Closing pipe File Descriptors." << std::endl;
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+    std::cout << "SUCCESS : Pipe FDs closed." << std::endl;
+
+    std::cout << "INFO    : --- pipe() Demonstration Finished ---" << std::endl;
+
+    return EXIT_SUCCESS;
+}
+```
+
+---
+
+### **Cách Biên dịch và Chạy:**
+
+**Bash**
+
+```
+g++ pipe_simple.cpp -o pipe_simple
+./pipe_simple
+```
+
+**2.2. `pipe()` qua `fork()`: Giao tiếp giữa Cha và Con 👨‍👧‍👦**
 
 * **Lý thuyết:** Lợi thế thực sự của `pipe()` xuất hiện khi bạn kết hợp nó với `fork()`.
 
@@ -129,7 +175,7 @@
 * **Ví dụ (C++): `pipe_fork.cpp` - Pipe qua `fork()`**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <unistd.h>   // For pipe, read, write, fork, getpid
@@ -267,7 +313,7 @@
 * **Ví dụ (C++): `pipe_dup2.cpp` - Chuyển hướng `stdout` của tiến trình con**
   **C++**
 
-  ```
+  ```cpp
   #include <iostream>
   #include <string>
   #include <unistd.h>   // For pipe, read, write, fork, execlp, close, dup2, getpid
