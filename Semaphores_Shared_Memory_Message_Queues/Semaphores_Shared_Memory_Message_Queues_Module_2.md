@@ -211,3 +211,65 @@ int main() {
       * **Tiến trình C (`kalman_filter`)**: Đọc dữ liệu từ cả hai nguồn trong shared memory để tính toán ra vị trí và hướng của xe một cách chính xác. Độ trễ cực thấp của shared memory là yếu tố sống còn cho các thuật toán điều khiển.
 
   * **Giao tiếp với Hardware DMA**: Trong các ứng dụng hiệu năng cao, bộ điều khiển **DMA (Direct Memory Access)** có thể được cấu hình để ghi dữ liệu từ ngoại vi (ví dụ: ADC, SPI) trực tiếp vào một vùng nhớ vật lý, vùng nhớ này sau đó được ánh xạ vào các tiến trình user-space dưới dạng shared memory. Đây là đỉnh cao của cơ chế "zero-copy", khi CPU thậm chí không cần tham gia vào việc di chuyển dữ liệu.
+
+---
+
+## 🧠 Cú pháp của `mmap()`
+
+```cpp
+#include <sys/mman.h>
+
+void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset);
+```
+
+| Tham số       | Ý nghĩa                                                                 |
+|---------------|-------------------------------------------------------------------------|
+| `addr`        | Địa chỉ bắt đầu ánh xạ (thường để `NULL` để kernel tự chọn)             |
+| `length`      | Kích thước vùng ánh xạ (số byte)                                        |
+| `prot`        | Quyền truy cập: `PROT_READ`, `PROT_WRITE`, `PROT_EXEC`, `PROT_NONE`     |
+| `flags`       | Kiểu ánh xạ: `MAP_SHARED`, `MAP_PRIVATE`, `MAP_ANONYMOUS`, v.v.         |
+| `fd`          | File descriptor của file cần ánh xạ (hoặc `-1` nếu dùng `MAP_ANONYMOUS`)|
+| `offset`      | Vị trí bắt đầu trong file (phải chia hết cho kích thước trang)          |
+
+---
+
+## 🔧 Ví dụ đơn giản
+
+```cpp
+int fd = open("data.txt", O_RDONLY);
+char* mapped = (char*) mmap(NULL, 4096, PROT_READ, MAP_PRIVATE, fd, 0);
+```
+
+➡️ File `data.txt` sẽ được ánh xạ vào bộ nhớ, và ta có thể đọc nội dung như đọc mảng `mapped[i]`.
+
+---
+
+## 🧹 Giải phóng vùng ánh xạ
+
+```cpp
+munmap(mapped, 4096);
+```
+
+---
+
+## 📦 Một số flags phổ biến
+
+| Flag              | Ý nghĩa                                                                 |
+|-------------------|-------------------------------------------------------------------------|
+| `MAP_SHARED`      | Các tiến trình khác có thể thấy thay đổi trong vùng ánh xạ              |
+| `MAP_PRIVATE`     | Copy-on-write — thay đổi không ảnh hưởng đến file gốc                   |
+| `MAP_ANONYMOUS`   | Không ánh xạ vào file nào — dùng để cấp phát bộ nhớ tạm                 |
+| `MAP_FIXED`       | Yêu cầu ánh xạ đúng tại địa chỉ `addr` (cẩn thận khi dùng)              |
+
+---
+
+## 🔄 So sánh với `read()` truyền thống
+
+| Cách truy cập     | Ưu điểm của `mmap()`                          |
+|-------------------|-----------------------------------------------|
+| `read()`          | Phải copy dữ liệu từ kernel vào user space    |
+| `mmap()`          | Truy cập trực tiếp vào vùng bộ nhớ ánh xạ     |
+|                   | Tối ưu cho file lớn, chia sẻ giữa tiến trình  |
+
+---
+

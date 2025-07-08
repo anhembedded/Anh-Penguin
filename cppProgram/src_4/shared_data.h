@@ -4,7 +4,7 @@
 #include <cstdint>
 
 struct SharedData {
-    uint32_t counter;
+    uint32_t counter {};
     char message[128];
 };
 

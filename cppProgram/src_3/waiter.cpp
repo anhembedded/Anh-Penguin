@@ -4,7 +4,7 @@
 
 int main() {
     
-    sem_t* my_sem = sem_open(SEM_NAME.c_str(), O_CREAT, 0666, 0);
+    sem_t* my_sem = sem_open(SEM_NAME, O_CREAT, 0666, 0);
 
     if (my_sem == SEM_FAILED) {
         perror("sem_open");
@@ -17,6 +17,6 @@ int main() {
     sem_close(my_sem);
 
     // Xóa semaphore khỏi hệ thống
-    sem_unlink(SEM_NAME.c_str());
+    sem_unlink(SEM_NAME);
     return 0;
 }

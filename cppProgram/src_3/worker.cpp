@@ -6,7 +6,7 @@
 
 int main() {
     // Mở semaphore đã tồn tại
-    sem_t* my_sem = sem_open(SEM_NAME.c_str(), 0);
+    sem_t* my_sem = sem_open(SEM_NAME, 0);
     if (my_sem == SEM_FAILED) {
         perror("sem_open (Worker)");
         return 1;
