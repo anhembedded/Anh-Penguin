@@ -1,2 +1,2 @@
-add_executable(mainProcess mainProcess.cpp)
-add_executable(printName printName.cpp)
+add_executable(src_1_mainProcess src_1_mainProcess.cpp)
+add_executable(src_1_printName src_1_printName.cpp)

@@ -11,3 +11,4 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_subdirectory(src_1)
 add_subdirectory(src_2)
+add_subdirectory(src_3)

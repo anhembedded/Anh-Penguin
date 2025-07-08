@@ -172,108 +172,143 @@ g++ pipe_simple.cpp -o pipe_simple
       P[Parent Process] -- pipefd[1] (write) --> Pipe[Pipe Buffer]
       Pipe -- pipefd[0] (read) --> C[Child Process]
   ```
+
 * **Ví dụ (C++): `pipe_fork.cpp` - Pipe qua `fork()`**
-  **C++**
 
-  ```cpp
-  #include <iostream>
-  #include <string>
-  #include <unistd.h>   // For pipe, read, write, fork, getpid
-  #include <cstdlib>    // For EXIT_SUCCESS, EXIT_FAILURE
-  #include <cstring>    // For memset, strlen, strerror
-  #include <errno.h>    // For errno
-  #include <sys/wait.h> // For wait (optional, for parent to wait)
+---
 
-  // Logger namespace
-  namespace AppLogger {
-      enum LogLevel { TRACE_L, DEBUG_L, INFO_L, SUCCESS_L, WARNING_L, ERROR_L, CRITICAL_L };
-      static const std::map<LogLevel, std::string> LogLevelNames = {
-          {TRACE_L,    "TRACE   "}, {DEBUG_L,    "DEBUG   "}, {INFO_L,     "INFO    "},
-          {SUCCESS_L,  "SUCCESS "}, {WARNING_L,  "WARNING "}, {ERROR_L,    "ERROR   "},
-          {CRITICAL_L, "CRITICAL"}
-      };
-      void log(LogLevel level, const std::string& message) {
-          std::cout << LogLevelNames.at(level) << ": " << message << std::endl;
-      }
-  }
+## 🔧 Mục tiêu
 
-  int main() {
-      int pipe_fds[2];
-      const char parent_data[] = "Hello from Parent!";
-      char child_buffer[BUFSIZ + 1];
-      pid_t fork_result;
-      ssize_t data_processed;
+Xây dựng **2 tiến trình riêng biệt** (gọi là `writer` và `reader`) giao tiếp với nhau bằng **pipe()**, không dùng `popen()`, không truyền dữ liệu cho chính mình. Cụ thể:
 
-      memset(child_buffer, '\0', sizeof(child_buffer));
+- `writer` tạo pipe → ghi dữ liệu vào pipe
+- `reader` nhận dữ liệu đó từ `stdin` (nhờ `dup2()` redirect)
+- `writer` dùng `fork()` + `exec()` để gọi `reader` như một binary riêng biệt
 
-      AppLogger::log(AppLogger::INFO_L, "--- Demonstrating pipe() across fork() ---");
+---
 
-      if (pipe(pipe_fds) == -1) {
-          AppLogger::log(AppLogger::CRITICAL_L, "Failed to create pipe: " + std::string(strerror(errno)));
-          return EXIT_FAILURE;
-      }
-      AppLogger::log(AppLogger::SUCCESS_L, "Pipe created. Read FD: " + std::to_string(pipe_fds[0]) + ", Write FD: " + std::to_string(pipe_fds[1]));
+## 🧠 Tổng quan pipeline
 
-      fork_result = fork(); // Tạo tiến trình con
+```text
+[writer.cpp] 
+   |
+   |--- pipe() tạo mảng 2 fd: [read_fd, write_fd]
+   |
+   |--- fork()
+         |-- Parent: ghi vào write_fd
+         |-- Child:
+             |-- dup2(read_fd → STDIN_FILENO)
+             |-- exec("./reader")
+```
 
-      if (fork_result == -1) {
-          AppLogger::log(AppLogger::CRITICAL_L, "Fork failure: " + std::string(strerror(errno)));
-          close(pipe_fds[0]); close(pipe_fds[1]);
-          return EXIT_FAILURE;
-      }
+---
 
-      if (fork_result == 0) {
-          // Đây là mã của tiến trình con
-          AppLogger::log(AppLogger::INFO_L, "Child Process (PID: " + std::to_string(getpid()) + "): Started.");
-          close(pipe_fds[1]); // Con không ghi, đóng đầu ghi của pipe
+## 🧩 writer.cpp – Tạo pipe và gửi dữ liệu
 
-          AppLogger::log(AppLogger::INFO_L, "Child Process: Reading data from pipe's read end (FD " + std::to_string(pipe_fds[0]) + ")...");
-          data_processed = read(pipe_fds[0], child_buffer, BUFSIZ);
-          if (data_processed == -1) {
-              AppLogger::log(AppLogger::ERROR_L, "Child: Read failed: " + std::string(strerror(errno)));
-          } else if (data_processed == 0) {
-              AppLogger::log(AppLogger::WARNING_L, "Child: Read 0 bytes (EOF).");
-          } else {
-              child_buffer[data_processed] = '\0';
-              AppLogger::log(AppLogger::SUCCESS_L, "Child: Read " + std::to_string(data_processed) + " bytes: '" + std::string(child_buffer) + "'");
-          }
-          close(pipe_fds[0]); // Đóng đầu đọc của pipe
-          AppLogger::log(AppLogger::INFO_L, "Child Process: Exiting.");
-          exit(EXIT_SUCCESS);
-      } else {
-          // Đây là mã của tiến trình cha
-          AppLogger::log(AppLogger::INFO_L, "Parent Process (PID: " + std::to_string(getpid()) + "): Child created with PID: " + std::to_string(fork_result) + ".");
-          close(pipe_fds[0]); // Cha không đọc, đóng đầu đọc của pipe
+```cpp
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
-          AppLogger::log(AppLogger::INFO_L, "Parent Process: Writing data to pipe's write end (FD " + std::to_string(pipe_fds[1]) + "): '" + parent_data + "'");
-          data_processed = write(pipe_fds[1], parent_data, strlen(parent_data));
-          if (data_processed == -1) {
-              AppLogger::log(AppLogger::ERROR_L, "Parent: Write failed: " + std::string(strerror(errno)));
-          } else {
-              AppLogger::log(AppLogger::SUCCESS_L, "Parent: Wrote " + std::to_string(data_processed) + " bytes to pipe.");
-          }
-          close(pipe_fds[1]); // Đóng đầu ghi của pipe
+int main() {
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(1);
+    }
 
-          // Cha chờ con hoàn thành
-          AppLogger::log(AppLogger::INFO_L, "Parent Process: Waiting for child to finish...");
-          wait(nullptr); 
-          AppLogger::log(AppLogger::INFO_L, "Parent Process: Child finished. Exiting.");
-          exit(EXIT_SUCCESS);
-      }
-  }
-  ```
-* **Cách Biên dịch:**
-  **Bash**
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        exit(1);
+    }
 
-  ```
-  g++ pipe_fork.cpp -o pipe_fork
-  ```
-* **Cách Chạy:**
-  **Bash**
+    if (pid == 0) {
+        // 👉 Child process → chạy reader
+        close(pipefd[1]); // Đóng đầu ghi
+        dup2(pipefd[0], STDIN_FILENO); // Chuyển read-end thành stdin
+        close(pipefd[0]);
 
-  ```
-  ./pipe_fork
-  ```
+        execl("./reader", "reader", NULL);
+        perror("exec");
+        exit(1);
+    } else {
+        // 👉 Parent process → ghi dữ liệu vào pipe
+        close(pipefd[0]); // Đóng đầu đọc
+        const char* msg = "🔔 Hello from writer!\n";
+        write(pipefd[1], msg, strlen(msg)); // Gửi dữ liệu
+        close(pipefd[1]); // Đóng đầu ghi khi xong
+        wait(nullptr);   // Chờ child kết thúc
+    }
+
+    return 0;
+}
+```
+
+---
+
+## 🧾 reader.cpp – Nhận dữ liệu từ stdin (đã redirect từ pipe)
+
+```cpp
+#include <iostream>
+#include <string>
+
+int main() {
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        std::cout << "📥 Reader nhận được: " << line << std::endl;
+    }
+    return 0;
+}
+```
+
+---
+
+## 🔍 Phân tích từng bước hoạt động
+
+| Thành phần         | Hành vi                                                    |
+|--------------------|------------------------------------------------------------|
+| `pipe(pipefd)`     | Tạo mảng gồm 2 file descriptor: `pipefd[0]` đọc, `pipefd[1]` ghi |
+| `fork()`           | Tạo child process độc lập                                   |
+| `dup2(pipefd[0], 0)` | Child chuyển hướng stdin thành `read-end` của pipe         |
+| `execl()`          | Child thực thi tiến trình reader mới                       |
+| `write()`          | Parent gửi dữ liệu sang pipe                               |
+| `std::getline()`   | Reader đọc từ stdin — thực tế là nhận dữ liệu từ pipe      |
+
+---
+
+## 📦 Dữ liệu đi như sau:
+
+```text
+[writer] write(pipefd[1], ...)  →  [kernel] pipe buffer  →  [reader] std::getline(stdin)
+```
+
+✅ Đây là **IPC thực thụ** giữa 2 tiến trình — kernel quản lý buffer pipe nằm giữa.
+
+---
+
+## 🛡️ Xử lý lỗi nên có
+
+- Kiểm tra `pipe()`, `fork()`, `dup2()`, `execl()` đều có thể lỗi → dùng `perror()` + `exit()` để đảm bảo dễ debug
+- Dọn dẹp file descriptor không dùng ở mỗi process để tránh bị treo do pipe không đóng (EOF không tới)
+
+---
+
+## 💬 Mở rộng nâng cao
+
+| Ý tưởng mở rộng       | Mô tả                                                      |
+|-----------------------|-------------------------------------------------------------|
+| Dùng 2 pipe           | Để giao tiếp 2 chiều → writer ↔ reader (bi-directional)     |
+| Dùng FIFO (named pipe)| Pipe tồn tại trên hệ thống, cho phép tiến trình độc lập hoàn toàn |
+| Dùng `poll()` / `select()` | Giao tiếp phi blocking, nhiều tiến trình cùng đọc pipe   |
+| Biến `reader` thành Python | Dễ viết script reader → ghép các ngôn ngữ khác nhau       |
+
+---
+
 * **Phân tích Output:** Bạn sẽ thấy tiến trình cha ghi dữ liệu, và tiến trình con đọc được dữ liệu đó từ pipe.
 
 #### **2.3. `dup()` và `dup2()`: Chuyển hướng Standard I/O qua Pipe ➡️🔀⬅️**
@@ -427,6 +462,7 @@ g++ pipe_simple.cpp -o pipe_simple
     ```
     g++ pipe_dup2.cpp -o pipe_dup2
     ```
+
   * **Cách Chạy:**
     **Bash**
 
@@ -434,6 +470,7 @@ g++ pipe_simple.cpp -o pipe_simple
     ./pipe_dup2
     cat child_redirected_output.txt # Kiểm tra nội dung file
     ```
+
   * **Phân tích Output:** Bạn sẽ thấy output của lệnh `ls -l /` đã được chuyển hướng vào file `child_redirected_output.txt` thông qua pipe.
 
 #### **2.4. Liên hệ với Windows và RTOS 🤝**
