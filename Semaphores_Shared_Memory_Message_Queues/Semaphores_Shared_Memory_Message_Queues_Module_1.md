@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 * **Module 1:** Đồng bộ hóa tiến trình với POSIX Semaphores
 * **Module 2:** Trao đổi dữ liệu tốc độ cao với POSIX Shared Memory

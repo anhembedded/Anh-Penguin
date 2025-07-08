@@ -8,6 +8,7 @@
 
 int main()
 {
+    std::cout << "Start Write" << std::endl;
     int fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
         perror("shm_open");

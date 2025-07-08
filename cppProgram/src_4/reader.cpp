@@ -7,6 +7,7 @@
 
 int main()
 {
+    std::cout << "Start Reader" << std::endl;
     sleep(1);
     // 1. Mở đối tượng shared memory đã có
     int fd = shm_open(SHM_NAME, O_RDONLY, 0666);
