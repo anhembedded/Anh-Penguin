@@ -269,6 +269,7 @@ close(client_fd);
 
 const char* SOCKET_PATH = "/tmp/my_app.socket";
 
+
 int main() {
     // 1. Dọn dẹp socket cũ nếu có và tạo socket mới
     unlink(SOCKET_PATH);

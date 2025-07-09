@@ -1,0 +1,7 @@
+#ifndef INTERNETSOCKET_COMMON_HPP_
+#define INTERNETSOCKET_COMMON_HPP_
+
+const int PORT = 9999;
+const char* SERVER_IP = "127.0.0.1";
+
+#endif // INTERNETSOCKET_COMMON_HPP_
