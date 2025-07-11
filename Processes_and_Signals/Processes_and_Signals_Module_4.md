@@ -113,7 +113,7 @@ Tín hiệu có thể xuất hiện từ nhiều nguồn khác nhau:
 
 ## ✉️ **4.3. Gửi Tín hiệu**
 
-### 🔹 Từ Shell:
+### 🔹 Từ Shell
 
 * `kill PID`
 
@@ -128,7 +128,7 @@ Tín hiệu có thể xuất hiện từ nhiều nguồn khác nhau:
 
   → Gửi tín hiệu tới tất cả tiến trình có tên `PROGRAM_NAME`.
 
-### 🔹 Từ chương trình C/C++:
+### 🔹 Từ chương trình C/C++
 
 * `int kill(pid_t pid, int sig);`
 
@@ -186,9 +186,9 @@ Cung cấp điều khiển chi tiết qua `struct sigaction`:
 
 ## 🎭 **4.5. Tập hợp Tín hiệu & Mặt nạ Tiến trình**
 
-### 🔹 Kiểu dữ liệu `sigset_t`: biểu diễn tập tín hiệu.
+### 🔹 Kiểu dữ liệu `sigset_t`: biểu diễn tập tín hiệu
 
-#### 🧰 Các hàm tiện ích:
+#### 🧰 Các hàm tiện ích
 
 ```cpp
 sigemptyset(&set);   // Rỗng
@@ -198,7 +198,7 @@ sigdelset(&set, sig); // Gỡ tín hiệu
 sigismember(&set, sig); // Kiểm tra có trong set không
 ```
 
-#### 🔧 `sigprocmask()`:
+#### 🔧 `sigprocmask()`
 
 ```cpp
 int sigprocmask(int how, const sigset_t *set, sigset_t *oset);
@@ -214,7 +214,7 @@ Thay đổi mặt nạ tín hiệu của tiến trình:
 
 → Các tín hiệu bị chặn sẽ **không xử lý ngay** mà được  **treo (pending)** .
 
-#### 🕸️ `sigpending()`:
+#### 🕸️ `sigpending()`
 
 ```cpp
 int sigpending(sigset_t *set);
@@ -222,7 +222,7 @@ int sigpending(sigset_t *set);
 
 → Kiểm tra tín hiệu nào đang treo.
 
-#### 🛌 `sigsuspend()`:
+#### 🛌 `sigsuspend()`
 
 ```cpp
 int sigsuspend(const sigset_t *mask);
@@ -240,7 +240,7 @@ int sigsuspend(const sigset_t *mask);
 | 🎭 Mặt nạ tín hiệu là**của từng luồng**         | Dùng `pthread_sigmask()`để chặn riêng từng luồng    |
 | 🧠 Signal Handler là**dùng chung toàn tiến trình** | Một luồng gọi → cả tiến trình biết                   |
 
-### 🧩 Quy tắc phân phối:
+### 🧩 Quy tắc phân phối
 
 | Loại tín hiệu                           | Gửi đến                                                          |
 | ------------------------------------------ | ------------------------------------------------------------------- |
@@ -361,6 +361,7 @@ Muốn mình format tiếp phần core dump, job control, hay tập tín hiệu 
     ```
     g++ signal_example.cpp -o signal_example
     ```
+
   * **Cách chạy và kiểm tra:**
 
     1. Chạy chương trình: `./signal_example`
@@ -420,7 +421,7 @@ Muốn mình format tiếp phần core dump, job control, hay tập tín hiệu 
      * Ghi một thông báo "Daemon shutting down gracefully." vào log.
      * **Thử thách:** Trong trình xử lý tín hiệu, đảm bảo rằng `closelog()` (nếu dùng syslog) hoặc `file_log_stream.close()` (nếu dùng file log) được gọi. **Lưu ý:** Việc gọi `close()` hoặc `fclose()` trong signal handler có thể không an toàn trong mọi trường hợp. Một cách an toàn hơn là đặt cờ và để vòng lặp chính thực hiện việc đóng.
 
-# Step by Step:
+# Step by Step
 
 ---
 
