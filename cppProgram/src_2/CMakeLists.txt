@@ -1,2 +1,0 @@
-add_executable(src_2_mainProcess src_2_mainProcess.cpp)
-add_executable(src_2_subProcess src_2_subProcess.cpp)

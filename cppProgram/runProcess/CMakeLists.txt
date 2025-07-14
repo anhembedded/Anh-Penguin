@@ -1,1 +1,0 @@
-add_executable(runProcess runProcess_main.cpp)

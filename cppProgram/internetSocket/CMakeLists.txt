@@ -1,2 +1,0 @@
-add_executable(internetSocket_client internetSocket_client.cpp)
-add_executable(internetSocket_server internetSocket_server.cpp)
